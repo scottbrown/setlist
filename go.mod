@@ -1,7 +1,8 @@
 module github.com/scottbrown/setlist
 
-go 1.21
-toolchain go1.23.4
+go 1.22
+
+toolchain go1.24.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.36.2
