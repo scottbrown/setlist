@@ -58,12 +58,17 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+  nicknameMapping, err := core.ParseNicknameMapping(mapping)
+  if err != nil {
+    return fmt.Errorf("invalid mapping format: %w", err)
+  }
+
 	configFile := core.ConfigFile{
 		SessionName:     ssoSession,
 		IdentityStoreId: *instance.IdentityStoreId,
 		FriendlyName:    ssoFriendlyName,
 		Region:          ssoRegion,
-		NicknameMapping: core.ParseNicknameMapping(mapping),
+		NicknameMapping: nicknameMapping,
 	}
 
 	profiles := []core.Profile{}
