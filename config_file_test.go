@@ -90,3 +90,51 @@ func TestHasNickname(t *testing.T) {
 		})
 	}
 }
+
+func TestHasNicknameEdgeCases(t *testing.T) {
+	tests := []struct {
+		name      string
+		mapping   map[string]string
+		accountId string
+		expected  bool
+	}{
+		{
+			"nil mapping",
+			nil,
+			"123",
+			false,
+		},
+		{
+			"empty mapping",
+			map[string]string{},
+			"123",
+			false,
+		},
+		{
+			"account exists",
+			map[string]string{"123": "test"},
+			"123",
+			true,
+		},
+		{
+			"account does not exist",
+			map[string]string{"123": "test"},
+			"456",
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := ConfigFile{
+				NicknameMapping: tt.mapping,
+			}
+
+			got := c.HasNickname(tt.accountId)
+
+			if got != tt.expected {
+				t.Errorf("HasNickname() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}

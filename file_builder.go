@@ -21,11 +21,33 @@ func NewFileBuilder(configFile ConfigFile) FileBuilder {
 	}
 }
 
+// validateConfig checks if the configuration has all required fields set.
+func (f *FileBuilder) validateConfig() error {
+	if f.Config.SessionName == "" {
+		return fmt.Errorf("missing required field: SessionName")
+	}
+
+	if f.Config.IdentityStoreId == "" && f.Config.FriendlyName == "" {
+		return fmt.Errorf("missing required field: either IdentityStoreId or FriendlyName must be provided")
+	}
+
+	if f.Config.Region == "" {
+		return fmt.Errorf("missing required field: Region")
+	}
+
+	return nil
+}
+
 // Build generates an INI file based on the configuration.
 // It adds a default section, an SSO section, and profile sections
 // for each configured profile. If a nickname mapping exists,
 // it creates an additional profile section for the nickname.
 func (f *FileBuilder) Build() (*ini.File, error) {
+	// First validate the configuration
+	if err := f.validateConfig(); err != nil {
+		return nil, err
+	}
+
 	payload := ini.Empty()
 
 	if err := f.addDefaultSection(payload); err != nil {
@@ -96,6 +118,19 @@ func (f *FileBuilder) addSSOSection(file *ini.File) error {
 // profile. It includes metadata such as session name, account ID, and
 // role name.
 func (f *FileBuilder) addProfileSection(p Profile, file *ini.File) error {
+	// Validate profile fields
+	if p.SessionName == "" {
+		return fmt.Errorf("profile missing required field: SessionName")
+	}
+
+	if p.AccountId == "" {
+		return fmt.Errorf("profile missing required field: AccountId")
+	}
+
+	if p.RoleName == "" {
+		return fmt.Errorf("profile missing required field: RoleName")
+	}
+
 	section := file.Section(fmt.Sprintf("profile %s", p.Name))
 
 	// Add a comment describing the profile and session duration

@@ -2,6 +2,7 @@ package setlist
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -32,6 +33,97 @@ func TestParseNicknameMapping(t *testing.T) {
 
 			if !reflect.DeepEqual(actual, tc.expected) {
 				t.Errorf("unexpected output: got %v, want %v", actual, tc.expected)
+			}
+		})
+	}
+}
+
+// Tests for error cases in ParseNicknameMapping
+func TestParseNicknameMappingErrors(t *testing.T) {
+	tests := []struct {
+		name        string
+		mapping     string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			"empty mapping",
+			"",
+			false,
+			"",
+		},
+		{
+			"valid mapping",
+			"12345=prod,67890=dev",
+			false,
+			"",
+		},
+		{
+			"missing equals sign",
+			"12345prod",
+			true,
+			"invalid nickname mapping format",
+		},
+		{
+			"empty account ID",
+			"=prod",
+			true,
+			"empty account ID",
+		},
+		{
+			"empty nickname",
+			"12345=",
+			true,
+			"empty nickname",
+		},
+		{
+			"too many equals signs",
+			"12345=prod=test",
+			true,
+			"invalid nickname mapping format",
+		},
+		{
+			"mixed valid and invalid",
+			"12345=prod,invalid",
+			true,
+			"invalid nickname mapping format",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := ParseNicknameMapping(tt.mapping)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseNicknameMapping() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr && err != nil && tt.errContains != "" {
+				if !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("Error message %q should contain %q", err.Error(), tt.errContains)
+				}
+			}
+
+			if !tt.wantErr {
+				// Verify the mapping was correctly parsed
+				if tt.mapping == "" && len(result) != 0 {
+					t.Errorf("Expected empty map for empty input, got %v", result)
+				}
+
+				if tt.mapping != "" {
+					expected := make(map[string]string)
+					for _, pair := range strings.Split(tt.mapping, ",") {
+						if strings.Contains(pair, "=") {
+							parts := strings.Split(pair, "=")
+							expected[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+						}
+					}
+
+					if !reflect.DeepEqual(result, expected) {
+						t.Errorf("Expected %v, got %v", expected, result)
+					}
+				}
 			}
 		})
 	}
