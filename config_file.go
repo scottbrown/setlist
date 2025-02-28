@@ -35,11 +35,7 @@ func (c *ConfigFile) hasFriendlyName() bool {
 
 // HasNickname determines whether an account has a mapped nickname.
 func (c ConfigFile) HasNickname(accountId string) bool {
-	exists := true
-
-	if _, ok := c.NicknameMapping[accountId]; !ok {
-		exists = false
-	}
+	_, exists := c.NicknameMapping[accountId]
 
 	return exists
 }
