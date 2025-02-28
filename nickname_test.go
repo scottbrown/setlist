@@ -28,7 +28,7 @@ func TestParseNicknameMapping(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			actual := ParseNicknameMapping(tc.mapping)
+			actual, _ := ParseNicknameMapping(tc.mapping)
 
 			if !reflect.DeepEqual(actual, tc.expected) {
 				t.Errorf("unexpected output: got %v, want %v", actual, tc.expected)
