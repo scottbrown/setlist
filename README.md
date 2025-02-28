@@ -15,12 +15,14 @@ Setlist solves this by automatically generating a complete .aws/config file with
 
 ## Installation
 
+<!--
 ### Homebrew
 
 ```bash
 brew tap scottbrown/aws-tools
 brew install scottbrown/setlist
 ```
+-->
 
 ### Download Binary
 
