@@ -24,7 +24,8 @@ var rootCmd = &cobra.Command{
 
 // handleRoot executes the main logic of the command-line application.
 func handleRoot(cmd *cobra.Command, args []string) error {
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.Background(), DEFAULT_TIMEOUT)
+	defer cancel()
 
 	var cfg aws.Config
 	var err error

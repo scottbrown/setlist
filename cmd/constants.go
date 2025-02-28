@@ -1,5 +1,9 @@
 package main
 
+import (
+	"time"
+)
+
 // AppName represents the application name.
 const AppName string = "setlist"
 
@@ -25,3 +29,6 @@ const (
 
 // Default output filename if no filename is specified
 const DEFAULT_FILENAME string = "aws.config"
+
+// Default timeout (in minutes) for all calls that use a context
+const DEFAULT_TIMEOUT time.Duration = 2 * time.Minute
