@@ -68,12 +68,14 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&mapping, FlagMapping, "m", "", "Comma-delimited Account Nickname Mapping (id=nickname)")
 	rootCmd.PersistentFlags().StringVarP(&filename, FlagOutput, "o", DEFAULT_FILENAME, "Where the AWS config file will be written")
 	rootCmd.PersistentFlags().BoolVar(&stdout, FlagStdout, false, "Specify this flag to write the config file to stdout instead of a file")
+	rootCmd.PersistentFlags().BoolVar(&permissions, FlagPermissions, false, "Specify this flag to print the required AWS permissions and then exit")
 	rootCmd.PersistentFlags().StringVar(&ssoFriendlyName, FlagSSOFriendlyName, "", "Use this instead of the identity store ID for the start URL")
 
-	rootCmd.MarkPersistentFlagRequired(FlagSSOSession)
-	rootCmd.MarkPersistentFlagRequired(FlagSSORegion)
-
 	rootCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		if permissions {
+			return nil
+		}
+
 		return validateRequiredFlags(cmd)
 	}
 }

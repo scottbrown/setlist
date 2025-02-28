@@ -61,6 +61,12 @@ This tool requires some readonly permissions from your AWS organization account.
 1. `sso:ListPermissionSetsProvisionedToAccount`
 1. `sso:DescribePermissionSet`
 
+You can view these in the application by running:
+
+```bash
+setlist --permissions
+```
+
 ### Basic Usage
 
 ```bash

@@ -30,6 +30,13 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 	var cfg aws.Config
 	var err error
 
+	if permissions {
+		for _, p := range core.ListPermissionsRequired() {
+			fmt.Println(p)
+		}
+		return nil
+	}
+
 	// check if a profile is specified
 	if profile != "" {
 		// create a config with the specified profile

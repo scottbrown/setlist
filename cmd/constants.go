@@ -23,6 +23,7 @@ const (
 	FlagProfile         string = "profile"
 	FlagMapping         string = "mapping"
 	FlagOutput          string = "output"
+	FlagPermissions     string = "permissions"
 	FlagStdout          string = "stdout"
 	FlagSSOFriendlyName string = "sso-friendly-name"
 )
