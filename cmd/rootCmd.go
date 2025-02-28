@@ -35,13 +35,13 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 		// create a config with the specified profile
 		cfg, err = config.LoadDefaultConfig(ctx, config.WithRegion(ssoRegion), config.WithSharedConfigProfile(profile))
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to load AWS configuration with profile %s: %w", profile, err)
 		}
 	} else {
 		// create a config with static credentials
 		cfg, err = config.LoadDefaultConfig(ctx, config.WithRegion(ssoRegion))
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to load AWS configuration: %w", err)
 		}
 	}
 
@@ -50,18 +50,18 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 
 	instance, err := core.SsoInstance(ctx, ssoClient)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to retrieve SSO instance: %w", err)
 	}
 
 	accounts, err := core.ListAccounts(ctx, orgClient)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to list AWS accounts: %w", err)
 	}
 
-  nicknameMapping, err := core.ParseNicknameMapping(mapping)
-  if err != nil {
-    return fmt.Errorf("invalid mapping format: %w", err)
-  }
+	nicknameMapping, err := core.ParseNicknameMapping(mapping)
+	if err != nil {
+		return fmt.Errorf("invalid mapping format: %w", err)
+	}
 
 	configFile := core.ConfigFile{
 		SessionName:     ssoSession,
@@ -73,13 +73,21 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 
 	profiles := []core.Profile{}
 	for _, account := range accounts {
-		permissionSets, err := core.PermissionSets(ctx, ssoClient, *instance.InstanceArn, *account.Id)
+		if account.Id == nil {
+			fmt.Fprintf(os.Stderr, "Warning: Found account with nil ID, skipping\n")
+			continue
+		}
 
+		permissionSets, err := core.PermissionSets(ctx, ssoClient, *instance.InstanceArn, *account.Id)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to list permission sets for account %s: %w", *account.Id, err)
 		}
 
 		for _, p := range permissionSets {
+			if p.Name == nil || p.Description == nil || p.SessionDuration == nil {
+				fmt.Fprintf(os.Stderr, "Warning: Found incomplete permission set data for account %s, skipping\n", *account.Id)
+			}
+
 			profile := core.Profile{
 				Description:     *p.Description,
 				SessionDuration: *p.SessionDuration,
@@ -97,12 +105,12 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 	builder := core.NewFileBuilder(configFile)
 	payload, err := builder.Build()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to build config file: %w", err)
 	}
 
 	if stdout {
 		if _, err := payload.WriteTo(os.Stdout); err != nil {
-			return err
+			return fmt.Errorf("failed to write config to stdout: %w", err)
 		}
 	} else {
 		if err := payload.SaveTo(filename); err != nil {
