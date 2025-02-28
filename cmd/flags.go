@@ -8,4 +8,5 @@ var (
 	filename        string // Output filename
 	stdout          bool   // Flag to print output to stdout instead of a file
 	ssoFriendlyName string // Optional friendly name for the SSO instance
+  permissions     bool   // Flag to print the permissions needed and exit
 )

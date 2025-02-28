@@ -30,6 +30,14 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 	var cfg aws.Config
 	var err error
 
+  if permissions {
+    fmt.Println("organizations:ListAccounts")
+    fmt.Println("sso:ListInstances")
+    fmt.Println("sso:ListPermissionSetsProvisionedToAccount")
+    fmt.Println("sso:DescribePermissionSet")
+    return nil
+  }
+
 	// check if a profile is specified
 	if profile != "" {
 		// create a config with the specified profile
