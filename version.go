@@ -1,3 +1,3 @@
 package setlist
 
-const VERSION string = "1.1.0"
+const VERSION string = "1.2.1"
