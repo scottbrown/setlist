@@ -56,7 +56,6 @@ tasks:
     deps:
       - task: build-deps
         silent: true
-      - task: build-all
       - task: release-all
     requires:
       vars:
@@ -101,6 +100,7 @@ tasks:
 
   release-linux:
     desc: "Creates a linux releasable artifact"
+    deps: [ build-linux ]
     cmds:
       - for: [ amd64, arm64 ]
         cmd: tar cfz {{ .dist_dir }}/{{ .bin_name }}_{{ .VERSION }}_linux_{{ .ITEM }}.tar.gz -C {{ .build_dir }}/linux-{{ .ITEM }} .
@@ -110,6 +110,7 @@ tasks:
 
   release-windows:
     desc: "Creates a Windows releasable artifact"
+    deps: [ build-windows ]
     cmds:
       - for: [ amd64, arm64 ]
         cmd: tar cfz {{ .dist_dir }}/{{ .bin_name }}_{{ .VERSION }}_windows_{{ .ITEM }}.tar.gz -C {{ .build_dir }}/windows-{{ .ITEM }} .
@@ -119,6 +120,7 @@ tasks:
 
   release-darwin:
     desc: "Creates a MacOS releasable artifact"
+    deps: [ build-darwin ]
     cmds:
       - for: [ amd64, arm64 ]
         cmd: tar cfz {{ .dist_dir }}/{{ .bin_name }}_{{ .VERSION }}_darwin_{{ .ITEM }}.tar.gz -C {{ .build_dir }}/darwin-{{ .ITEM }} .
