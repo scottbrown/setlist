@@ -9,4 +9,5 @@ var (
 	stdout          bool   // Flag to print output to stdout instead of a file
 	ssoFriendlyName string // Optional friendly name for the SSO instance
 	permissions     bool   // Flag to print the permissions needed and exit
+	checkUpdate     bool   // Flag to check if an update is available
 )
