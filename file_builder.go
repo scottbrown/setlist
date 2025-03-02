@@ -7,8 +7,9 @@ import (
 	"github.com/go-ini/ini"
 )
 
-// FileBuilder is responsible for generating an INI file
-// based on the provided configuration.
+// FileBuilder is responsible for generating an INI-formatted configuration file
+// based on the provided AWS SSO configuration. It handles creating sections
+// for the default profile, SSO session, and individual profiles.
 type FileBuilder struct {
 	Config ConfigFile
 }

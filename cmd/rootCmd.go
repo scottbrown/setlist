@@ -23,6 +23,8 @@ var rootCmd = &cobra.Command{
 }
 
 // handleRoot executes the main logic of the command-line application.
+// It retrieves AWS accounts and permission sets, builds the configuration
+// structure, and outputs it to the specified destination.
 func handleRoot(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), DEFAULT_TIMEOUT)
 	defer cancel()

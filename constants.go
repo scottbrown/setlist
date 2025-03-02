@@ -1,3 +1,5 @@
+// Default AWS SSO configuration constants used for generating
+// properly formatted config files with standard attributes.
 package setlist
 
 // SSOSessionSectionKey is the key used for defining an SSO session in

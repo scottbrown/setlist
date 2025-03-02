@@ -17,8 +17,11 @@ type SSOAdminClient interface {
 	DescribePermissionSet(ctx context.Context, params *ssoadmin.DescribePermissionSetInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.DescribePermissionSetOutput, error)
 }
 
-// SsoInstance retrieves the SSO instance metadata.
-// AWS SSO allows only a single instance per organization.
+// SsoInstance retrieves the AWS SSO instance metadata from the AWS account.
+// AWS SSO allows only a single instance per organization, so this function
+// returns the first (and only) instance found. It validates that required
+// fields exist in the response and returns an error if the SSO service is
+// not properly configured.
 func SsoInstance(ctx context.Context, client SSOAdminClient) (types.InstanceMetadata, error) {
 	resp, err := client.ListInstances(ctx, nil)
 	if err != nil {
