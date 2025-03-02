@@ -5,9 +5,11 @@ import (
 	"strings"
 )
 
-// ParseNicknameMapping parses a nickname mapping string into a map.
-// The expected format is "accountID1=nickname1,accountID2=nickname2".
-// Returns an error if the format is invalid.
+// ParseNicknameMapping parses a comma-delimited string of account ID to nickname
+// mappings into a map. The expected format is "accountID1=nickname1,accountID2=nickname2".
+// This enables users to reference AWS accounts by friendly names rather than
+// numeric IDs. The function validates the format and returns appropriate errors
+// for malformed input.
 func ParseNicknameMapping(mapping string) (map[string]string, error) {
 	nicknameMapping := make(map[string]string)
 

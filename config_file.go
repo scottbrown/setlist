@@ -4,8 +4,10 @@ import (
 	"fmt"
 )
 
-// ConfigFile represents the structure of the configuration file,
-// including session details, profiles, and nickname mappings.
+// ConfigFile represents the structure of an AWS CLI configuration file,
+// including session details, profiles, and nickname mappings. It contains
+// all the information needed to generate a complete AWS config file for
+// use with AWS SSO authentication.
 type ConfigFile struct {
 	SessionName     string            // Name of the SSO session
 	IdentityStoreId string            // The unique identity store ID

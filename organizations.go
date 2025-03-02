@@ -14,7 +14,10 @@ type OrganizationsClient interface {
 }
 
 // ListAccounts retrieves all accounts within an AWS Organization using
-// the provided Organizations client.
+// the provided Organizations client. It handles pagination automatically
+// to ensure all accounts are retrieved, even when the organization contains
+// a large number of accounts. The function respects context cancellation for
+// proper timeout handling.
 func ListAccounts(ctx context.Context, client OrganizationsClient) ([]types.Account, error) {
 	var accounts []types.Account
 
