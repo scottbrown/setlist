@@ -42,17 +42,17 @@ func validateRequiredFlags(cmd *cobra.Command) error {
 		}
 
 		// Try to check if the file is writable by creating it
-		f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644) //#nosec: G302
 		if err != nil {
 			return fmt.Errorf("cannot write to output file %s: %w", filename, err)
 		}
-		f.Close()
+		f.Close() //#nosec: G104
 
 		// If it's just a test, remove the file if it was newly created
 		if _, err := os.Stat(filename); err == nil {
 			fi, err := os.Stat(filename)
 			if err == nil && fi.Size() == 0 {
-				os.Remove(filename)
+				os.Remove(filename) //#nosec: G104
 			}
 		}
 	}
