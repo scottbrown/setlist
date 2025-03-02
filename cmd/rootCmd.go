@@ -29,6 +29,27 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), DEFAULT_TIMEOUT)
 	defer cancel()
 
+	// Handle the check-update flag if specified
+	if checkUpdate {
+		info, err := core.CheckForUpdates(ctx)
+		if err != nil {
+			return fmt.Errorf("error checking for updates: %w", err)
+		}
+
+		if info == nil {
+			fmt.Printf("You're running the latest version (v%s)\n", core.VERSION)
+		} else {
+			fmt.Printf("A new version is available!\n")
+			fmt.Printf("Current version: v%s\n", info.CurrentVersion)
+			fmt.Printf("Latest version:  %s (released %s)\n",
+				info.LatestVersion,
+				info.ReleaseDate.Format("2006-01-02"))
+			fmt.Printf("Download URL:    %s\n", info.ReleaseURL)
+		}
+
+		return nil // Exit after checking for updates
+	}
+
 	var cfg aws.Config
 	var err error
 

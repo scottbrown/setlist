@@ -70,9 +70,10 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&stdout, FlagStdout, false, "Specify this flag to write the config file to stdout instead of a file")
 	rootCmd.PersistentFlags().BoolVar(&permissions, FlagPermissions, false, "Specify this flag to print the required AWS permissions and then exit")
 	rootCmd.PersistentFlags().StringVar(&ssoFriendlyName, FlagSSOFriendlyName, "", "Use this instead of the identity store ID for the start URL")
+	rootCmd.PersistentFlags().BoolVar(&checkUpdate, FlagCheckUpdate, false, "Check if a newer version of the tool is available")
 
 	rootCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		if permissions {
+		if permissions || checkUpdate {
 			return nil
 		}
 
