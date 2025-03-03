@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"os"
 
-	core "github.com/scottbrown/setlist"
+	"github.com/scottbrown/setlist"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/organizations"
+	orgtypes "github.com/aws/aws-sdk-go-v2/service/organizations/types"
 	"github.com/aws/aws-sdk-go-v2/service/ssoadmin"
+	ssotypes "github.com/aws/aws-sdk-go-v2/service/ssoadmin/types"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +21,7 @@ var rootCmd = &cobra.Command{
 	Short:   AppDescShort,
 	Long:    AppDescLong,
 	RunE:    handleRoot,
-	Version: core.VERSION,
+	Version: setlist.VERSION,
 }
 
 // handleRoot executes the main logic of the command-line application.
@@ -31,76 +33,78 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 
 	// Handle the check-update flag if specified
 	if checkUpdate {
-		info, err := core.CheckForUpdates(ctx)
-		if err != nil {
-			return fmt.Errorf("error checking for updates: %w", err)
-		}
-
-		if info == nil {
-			fmt.Printf("You're running the latest version (v%s)\n", core.VERSION)
-		} else {
-			fmt.Printf("A new version is available!\n")
-			fmt.Printf("Current version: v%s\n", info.CurrentVersion)
-			fmt.Printf("Latest version:  %s (released %s)\n",
-				info.LatestVersion,
-				info.ReleaseDate.Format("2006-01-02"))
-			fmt.Printf("Download URL:    %s\n", info.ReleaseURL)
-		}
-
-		return nil // Exit after checking for updates
+		return handleCheckUpdate(ctx)
 	}
-
-	var cfg aws.Config
-	var err error
 
 	if permissions {
-		for _, p := range core.ListPermissionsRequired() {
-			fmt.Println(p)
-		}
-		return nil
+		return handleListPermissions()
 	}
 
-	// check if a profile is specified
-	if profile != "" {
-		// create a config with the specified profile
-		cfg, err = config.LoadDefaultConfig(ctx, config.WithRegion(ssoRegion), config.WithSharedConfigProfile(profile))
-		if err != nil {
-			return fmt.Errorf("failed to load AWS configuration with profile %s: %w", profile, err)
-		}
-	} else {
-		// create a config with static credentials
-		cfg, err = config.LoadDefaultConfig(ctx, config.WithRegion(ssoRegion))
-		if err != nil {
-			return fmt.Errorf("failed to load AWS configuration: %w", err)
-		}
+	cfg, err := loadAWSConfig(ctx)
+	if err != nil {
+		return err
 	}
 
 	ssoClient := ssoadmin.NewFromConfig(cfg)
 	orgClient := organizations.NewFromConfig(cfg)
 
-	instance, err := core.SsoInstance(ctx, ssoClient)
+	instance, err := setlist.SsoInstance(ctx, ssoClient)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve SSO instance: %w", err)
 	}
 
-	accounts, err := core.ListAccounts(ctx, orgClient)
+	accounts, err := setlist.ListAccounts(ctx, orgClient)
 	if err != nil {
 		return fmt.Errorf("failed to list AWS accounts: %w", err)
 	}
 
-	nicknameMapping, err := core.ParseNicknameMapping(mapping)
+	nicknameMapping, err := setlist.ParseNicknameMapping(mapping)
 	if err != nil {
 		return fmt.Errorf("invalid mapping format: %w", err)
 	}
 
 	if listAccounts {
-		for _, a := range accounts {
-			fmt.Printf("%s\t%s\n", *a.Id, *a.Name)
-		}
-		return nil
+		return displayAccounts(accounts)
 	}
 
-	configFile := core.ConfigFile{
+	configFile, err := buildConfigFile(ctx, ssoClient, instance, accounts, nicknameMapping)
+	if err != nil {
+		return err
+	}
+
+	return outputConfig(configFile)
+}
+
+// loadAWSConfig loads AWS configuration based on provided flags
+func loadAWSConfig(ctx context.Context) (aws.Config, error) {
+	if profile != "" {
+		// Create a config with the specified profile
+		cfg, err := config.LoadDefaultConfig(ctx,
+			config.WithRegion(ssoRegion),
+			config.WithSharedConfigProfile(profile))
+		if err != nil {
+			return aws.Config{}, fmt.Errorf("failed to load AWS configuration with profile %s: %w", profile, err)
+		}
+		return cfg, nil
+	}
+
+	// Create a config with default credentials
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(ssoRegion))
+	if err != nil {
+		return aws.Config{}, fmt.Errorf("failed to load AWS configuration: %w", err)
+	}
+	return cfg, nil
+}
+
+// buildConfigFile constructs the configuration file with all profiles
+func buildConfigFile(
+	ctx context.Context,
+	ssoClient *ssoadmin.Client,
+	instance ssotypes.InstanceMetadata,
+	accounts []orgtypes.Account,
+	nicknameMapping map[string]string,
+) (setlist.ConfigFile, error) {
+	configFile := setlist.ConfigFile{
 		SessionName:     ssoSession,
 		IdentityStoreId: *instance.IdentityStoreId,
 		FriendlyName:    ssoFriendlyName,
@@ -108,38 +112,76 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 		NicknameMapping: nicknameMapping,
 	}
 
-	profiles := []core.Profile{}
+	profiles, err := buildProfiles(ctx, ssoClient, instance, accounts)
+	if err != nil {
+		return configFile, err
+	}
+
+	configFile.Profiles = profiles
+	return configFile, nil
+}
+
+// buildProfiles builds all the profile configurations
+func buildProfiles(
+	ctx context.Context,
+	ssoClient *ssoadmin.Client,
+	instance ssotypes.InstanceMetadata,
+	accounts []orgtypes.Account,
+) ([]setlist.Profile, error) {
+	profiles := []setlist.Profile{}
+
 	for _, account := range accounts {
 		if account.Id == nil {
 			fmt.Fprintf(os.Stderr, "Warning: Found account with nil ID, skipping\n")
 			continue
 		}
 
-		permissionSets, err := core.PermissionSets(ctx, ssoClient, *instance.InstanceArn, *account.Id)
+		permissionSets, err := setlist.PermissionSets(ctx, ssoClient, *instance.InstanceArn, *account.Id)
 		if err != nil {
-			return fmt.Errorf("failed to list permission sets for account %s: %w", *account.Id, err)
+			return nil, fmt.Errorf("failed to list permission sets for account %s: %w", *account.Id, err)
 		}
 
-		for _, p := range permissionSets {
-			if p.Name == nil || p.Description == nil || p.SessionDuration == nil {
-				fmt.Fprintf(os.Stderr, "Warning: Found incomplete permission set data for account %s, skipping\n", *account.Id)
-			}
-
-			profile := core.Profile{
-				Description:     *p.Description,
-				SessionDuration: *p.SessionDuration,
-				SessionName:     ssoSession,
-				AccountId:       *account.Id,
-				RoleName:        *p.Name,
-			}
-
-			profiles = append(profiles, profile)
+		accountProfiles, err := buildAccountProfiles(account, permissionSets)
+		if err != nil {
+			return nil, err
 		}
+
+		profiles = append(profiles, accountProfiles...)
 	}
 
-	configFile.Profiles = profiles
+	return profiles, nil
+}
 
-	builder := core.NewFileBuilder(configFile)
+// buildAccountProfiles builds profiles for a specific account
+func buildAccountProfiles(
+	account orgtypes.Account,
+	permissionSets []ssotypes.PermissionSet,
+) ([]setlist.Profile, error) {
+	profiles := []setlist.Profile{}
+
+	for _, p := range permissionSets {
+		if p.Name == nil || p.Description == nil || p.SessionDuration == nil {
+			fmt.Fprintf(os.Stderr, "Warning: Found incomplete permission set data for account %s, skipping\n", *account.Id)
+			continue
+		}
+
+		profile := setlist.Profile{
+			Description:     *p.Description,
+			SessionDuration: *p.SessionDuration,
+			SessionName:     ssoSession,
+			AccountId:       *account.Id,
+			RoleName:        *p.Name,
+		}
+
+		profiles = append(profiles, profile)
+	}
+
+	return profiles, nil
+}
+
+// outputConfig writes the configuration to the specified destination
+func outputConfig(configFile setlist.ConfigFile) error {
+	builder := setlist.NewFileBuilder(configFile)
 	payload, err := builder.Build()
 	if err != nil {
 		return fmt.Errorf("failed to build config file: %w", err)
@@ -154,6 +196,14 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		fmt.Printf("Wrote to %s\n", filename)
+	}
+
+	return nil
+}
+
+func displayAccounts(accounts []orgtypes.Account) error {
+	for _, a := range accounts {
+		fmt.Printf("%s\t%s\n", *a.Id, *a.Name)
 	}
 
 	return nil
