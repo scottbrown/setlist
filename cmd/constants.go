@@ -27,6 +27,7 @@ const (
 	FlagStdout          string = "stdout"
 	FlagSSOFriendlyName string = "sso-friendly-name"
 	FlagCheckUpdate     string = "check-update"
+	FlagListAccounts    string = "list-accounts"
 )
 
 // Default output filename if no filename is specified

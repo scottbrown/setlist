@@ -93,6 +93,13 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid mapping format: %w", err)
 	}
 
+	if listAccounts {
+		for _, a := range accounts {
+			fmt.Printf("%s\t%s\n", *a.Id, *a.Name)
+		}
+		return nil
+	}
+
 	configFile := core.ConfigFile{
 		SessionName:     ssoSession,
 		IdentityStoreId: *instance.IdentityStoreId,
