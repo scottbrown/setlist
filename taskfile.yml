@@ -132,3 +132,8 @@ tasks:
     desc: "Generates an SBOM"
     cmds:
       - cyclonedx-gomod mod -licenses -json -output {{ .dist_dir }}/bom.json
+
+  bench:
+    desc: "Benchmark the code"
+    cmds:
+      - go test -bench=. -benchmem -benchtime=5s -run=^$ ./...
