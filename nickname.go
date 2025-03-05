@@ -2,6 +2,7 @@ package setlist
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -33,6 +34,11 @@ func ParseNicknameMapping(mapping string) (map[string]string, error) {
 
 		if accountID == "" {
 			return nil, fmt.Errorf("empty account ID in mapping entry %d", i+1)
+		}
+
+		match, _ := regexp.MatchString("^[0-9]{12}$", accountID)
+		if !match {
+			return nil, fmt.Errorf("invalid account ID in mapping entry %d", i+1)
 		}
 
 		if nickname == "" {

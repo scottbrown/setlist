@@ -14,10 +14,10 @@ func TestParseNicknameMapping(t *testing.T) {
 	}{
 		{
 			"knowngood",
-			"01234=foo,9876=bar",
+			"123456789012=foo,123456789013=bar",
 			map[string]string{
-				"01234": "foo",
-				"9876":  "bar",
+				"123456789012": "foo",
+				"123456789013": "bar",
 			},
 		},
 		{
@@ -54,7 +54,7 @@ func TestParseNicknameMappingErrors(t *testing.T) {
 		},
 		{
 			"valid mapping",
-			"12345=prod,67890=dev",
+			"123456789012=prod,123456789013=dev",
 			false,
 			"",
 		},
@@ -72,7 +72,7 @@ func TestParseNicknameMappingErrors(t *testing.T) {
 		},
 		{
 			"empty nickname",
-			"12345=",
+			"123456789012=",
 			true,
 			"empty nickname",
 		},
@@ -84,9 +84,27 @@ func TestParseNicknameMappingErrors(t *testing.T) {
 		},
 		{
 			"mixed valid and invalid",
-			"12345=prod,invalid",
+			"123456789012=prod,invalid",
 			true,
 			"invalid nickname mapping format",
+		},
+		{
+			"too short account id",
+			"123=prod,1234567789012=stg",
+			true,
+			"invalid account ID in mapping entry",
+		},
+		{
+			"too long account id",
+			"1234567890123=prod,1234567789012=stg",
+			true,
+			"invalid account ID in mapping entry",
+		},
+		{
+			"alphanumeric account id",
+			"123a45789012=prod,1234567789012=stg",
+			true,
+			"invalid account ID in mapping entry",
 		},
 	}
 
