@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+var accountIdPattern = regexp.MustCompile("^[0-9]{12}$")
+
 // ParseNicknameMapping parses a comma-delimited string of account ID to nickname
 // mappings into a map. The expected format is "accountID1=nickname1,accountID2=nickname2".
 // This enables users to reference AWS accounts by friendly names rather than
@@ -36,8 +38,7 @@ func ParseNicknameMapping(mapping string) (map[string]string, error) {
 			return nil, fmt.Errorf("empty account ID in mapping entry %d", i+1)
 		}
 
-		match, _ := regexp.MatchString("^[0-9]{12}$", accountID)
-		if !match {
+		if !accountIdPattern.MatchString(accountID) {
 			return nil, fmt.Errorf("invalid account ID in mapping entry %d", i+1)
 		}
 
