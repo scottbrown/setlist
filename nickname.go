@@ -2,8 +2,11 @@ package setlist
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
+
+var accountIdPattern = regexp.MustCompile("^[0-9]{12}$")
 
 // ParseNicknameMapping parses a comma-delimited string of account ID to nickname
 // mappings into a map. The expected format is "accountID1=nickname1,accountID2=nickname2".
@@ -33,6 +36,10 @@ func ParseNicknameMapping(mapping string) (map[string]string, error) {
 
 		if accountID == "" {
 			return nil, fmt.Errorf("empty account ID in mapping entry %d", i+1)
+		}
+
+		if !accountIdPattern.MatchString(accountID) {
+			return nil, fmt.Errorf("invalid account ID in mapping entry %d", i+1)
 		}
 
 		if nickname == "" {
