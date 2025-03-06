@@ -131,7 +131,7 @@ func buildProfiles(
 ) ([]setlist.Profile, error) {
 	profiles := []setlist.Profile{}
 
-	includedAccounts := buildIncludedAccounts()
+	includedAccounts := buildIncludedAccounts(accounts)
 	excludedAccounts := buildExcludedAccounts()
 
 	for _, account := range accounts {
@@ -223,11 +223,23 @@ func displayAccounts(accounts []orgtypes.Account) error {
 
 type AccountsFilter []string
 
-func buildIncludedAccounts() AccountsFilter {
+func buildIncludedAccounts(accounts []orgtypes.Account) AccountsFilter {
+	if includeAccounts == "" {
+		var x AccountsFilter
+		for _, i := range accounts {
+			x = append(x, *i.Id)
+		}
+		return x
+	}
+
 	return strings.Split(includeAccounts, ",")
 }
 
 func buildExcludedAccounts() AccountsFilter {
+	if includeAccounts == "" {
+		return AccountsFilter{}
+	}
+
 	return strings.Split(excludeAccounts, ",")
 }
 
