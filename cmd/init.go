@@ -72,6 +72,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&ssoFriendlyName, FlagSSOFriendlyName, "", "Use this instead of the identity store ID for the start URL")
 	rootCmd.PersistentFlags().BoolVar(&checkUpdate, FlagCheckUpdate, false, "Check if a newer version of the tool is available")
 	rootCmd.PersistentFlags().BoolVar(&listAccounts, FlagListAccounts, false, "List all available AWS accounts")
+	rootCmd.PersistentFlags().StringVarP(&includeAccounts, FlagIncludeAccounts, "", "", "Include only these comma-separated accounts")
+	rootCmd.PersistentFlags().StringVarP(&excludeAccounts, FlagExcludeAccounts, "", "", "Exclude these comma-separated accounts")
 
 	rootCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
 		if permissions || checkUpdate || listAccounts {

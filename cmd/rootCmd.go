@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/scottbrown/setlist"
 
@@ -130,9 +131,20 @@ func buildProfiles(
 ) ([]setlist.Profile, error) {
 	profiles := []setlist.Profile{}
 
+	includedAccounts := buildIncludedAccounts()
+	excludedAccounts := buildExcludedAccounts()
+
 	for _, account := range accounts {
 		if account.Id == nil {
 			fmt.Fprintf(os.Stderr, "Warning: Found account with nil ID, skipping\n")
+			continue
+		}
+
+		if !includedAccounts.Contains(*account.Id) {
+			continue
+		}
+
+		if excludedAccounts.Contains(*account.Id) {
 			continue
 		}
 
@@ -207,4 +219,24 @@ func displayAccounts(accounts []orgtypes.Account) error {
 	}
 
 	return nil
+}
+
+type AccountsFilter []string
+
+func buildIncludedAccounts() AccountsFilter {
+	return strings.Split(includeAccounts, ",")
+}
+
+func buildExcludedAccounts() AccountsFilter {
+	return strings.Split(excludeAccounts, ",")
+}
+
+func (a AccountsFilter) Contains(id string) bool {
+	for _, i := range a {
+		if i == id {
+			return true
+		}
+	}
+
+	return false
 }
