@@ -120,7 +120,9 @@ By supplying a `--mapping` flag with a comma-delimited list of key=value pairs c
 |--output|-o|Output file path (default: ./aws.config)|No|
 |--stdout||Write config to stdout instead of a file|No|
 |--sso-friendly-name||Alternative name for the SSO start URL|No|
-|--list-accounts|Lists all available AWS accounts|
+|--list-accounts|Lists all available AWS accounts|No|
+|--include-accounts|Includes only these comma-separated account IDs in the output|No|
+|--exclude-accounts|Exclude these comma-separated account IDs from the output|No|
 
 ## Generated Config Format
 
