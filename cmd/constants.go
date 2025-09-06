@@ -28,6 +28,8 @@ const (
 	FlagSSOFriendlyName string = "sso-friendly-name"
 	FlagCheckUpdate     string = "check-update"
 	FlagListAccounts    string = "list-accounts"
+	FlagIncludeAccounts string = "include-accounts"
+	FlagExcludeAccounts string = "exclude-accounts"
 )
 
 // Default output filename if no filename is specified
