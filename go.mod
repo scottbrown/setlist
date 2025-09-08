@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/organizations v1.43.0
 	github.com/aws/aws-sdk-go-v2/service/ssoadmin v1.35.0
 	github.com/go-ini/ini v1.67.0
-	github.com/spf13/cobra v1.9.1
+	github.com/spf13/cobra v1.10.1
 )
 
 require (
@@ -24,6 +24,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.37.0 // indirect
 	github.com/aws/smithy-go v1.22.5 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/spf13/pflag v1.0.6 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/stretchr/testify v1.8.2 // indirect
 )
