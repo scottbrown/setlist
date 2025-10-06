@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.39.2
 	github.com/aws/aws-sdk-go-v2/config v1.31.9
 	github.com/aws/aws-sdk-go-v2/service/organizations v1.45.3
-	github.com/aws/aws-sdk-go-v2/service/ssoadmin v1.35.3
+	github.com/aws/aws-sdk-go-v2/service/ssoadmin v1.36.2
 	github.com/go-ini/ini v1.67.0
 	github.com/spf13/cobra v1.10.1
 )
