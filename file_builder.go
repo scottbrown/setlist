@@ -61,10 +61,10 @@ func (f *FileBuilder) Build() (*ini.File, error) {
 
 	for _, p := range f.Config.Profiles {
 		name, err := NewProfileName(fmt.Sprintf("%s-%s", p.AccountId.String(), p.RoleName.String()))
-    if err != nil {
-      return payload, err
-    }
-    p.Name = name
+		if err != nil {
+			return payload, err
+		}
+		p.Name = name
 
 		if err := f.addProfileSection(p, payload); err != nil {
 			return payload, err
@@ -77,10 +77,10 @@ func (f *FileBuilder) Build() (*ini.File, error) {
 
 		// Create section for AccountNickname-PermissionSet profile
 		name, err = NewProfileName(fmt.Sprintf("%s-%s", f.Config.NicknameMapping[p.AccountId.String()], p.RoleName.String()))
-    if err != nil {
+		if err != nil {
 			return payload, err
-    }
-    p.Name = name
+		}
+		p.Name = name
 		if err := f.addProfileSection(p, payload); err != nil {
 			return payload, err
 		}

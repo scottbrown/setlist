@@ -1,7 +1,7 @@
 package setlist
 
 import (
-  "fmt"
+	"fmt"
 )
 
 // Profile represents an AWS SSO profile configuration.
@@ -25,79 +25,79 @@ type AWSAccountId string
 type RoleName string
 
 func NewProfileName(name string) (ProfileName, error) {
-  if name == "" {
-    return ProfileName(""), ErrEmptyString
-  }
+	if name == "" {
+		return ProfileName(""), ErrEmptyString
+	}
 
-  return ProfileName(name), nil
+	return ProfileName(name), nil
 }
 
 func NewProfileDescription(desc string) (ProfileDescription, error) {
-  if desc == "" {
-    return ProfileDescription(""), ErrEmptyString
-  }
+	if desc == "" {
+		return ProfileDescription(""), ErrEmptyString
+	}
 
-  return ProfileDescription(desc), nil
+	return ProfileDescription(desc), nil
 }
 
 func NewSessionDuration(duration string) (SessionDuration, error) {
-  if duration == "" {
-    return SessionDuration(""), ErrEmptyString
-  }
+	if duration == "" {
+		return SessionDuration(""), ErrEmptyString
+	}
 
-  return SessionDuration(duration), nil
+	return SessionDuration(duration), nil
 }
 
 func NewSessionName(name string) (SessionName, error) {
-  if name == "" {
-    return SessionName(""), ErrEmptyString
-  }
+	if name == "" {
+		return SessionName(""), ErrEmptyString
+	}
 
-  return SessionName(name), nil
+	return SessionName(name), nil
 }
 
 var ErrInvalidAWSAccountIdLength = fmt.Errorf("invalid length for AWS account id")
 
 func NewAWSAccountId(id string) (AWSAccountId, error) {
-  if id == "" {
-    return AWSAccountId(""), ErrEmptyString
-  }
+	if id == "" {
+		return AWSAccountId(""), ErrEmptyString
+	}
 
-  if len(id) != 12 {
-    return AWSAccountId(""), ErrInvalidAWSAccountIdLength
-  }
+	if len(id) != 12 {
+		return AWSAccountId(""), ErrInvalidAWSAccountIdLength
+	}
 
-  return AWSAccountId(id), nil
+	return AWSAccountId(id), nil
 }
 
 func NewRoleName(name string) (RoleName, error) {
-  if name == "" {
-    return RoleName(""), ErrEmptyString
-  }
+	if name == "" {
+		return RoleName(""), ErrEmptyString
+	}
 
-  return RoleName(name), nil
+	return RoleName(name), nil
 }
 
 func (pn ProfileName) String() string {
-  return string(pn)
+	return string(pn)
 }
 
 func (pd ProfileDescription) String() string {
-  return string(pd)
+	return string(pd)
 }
 
 func (sd SessionDuration) String() string {
-  return string(sd)
+	return string(sd)
 }
 
 func (sn SessionName) String() string {
-  return string(sn)
+	return string(sn)
 }
 
 func (aai AWSAccountId) String() string {
-  return string(aai)
+	return string(aai)
 }
 
 func (rn RoleName) String() string {
-  return string(rn)
+	return string(rn)
 }
