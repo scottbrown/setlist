@@ -60,18 +60,27 @@ func (f *FileBuilder) Build() (*ini.File, error) {
 	}
 
 	for _, p := range f.Config.Profiles {
-		p.Name = fmt.Sprintf("%s-%s", p.AccountId, p.RoleName)
+		name, err := NewProfileName(fmt.Sprintf("%s-%s", p.AccountId.String(), p.RoleName.String()))
+    if err != nil {
+      return payload, err
+    }
+    p.Name = name
+
 		if err := f.addProfileSection(p, payload); err != nil {
 			return payload, err
 		}
 
 		// Check if the profile has an associated nickname
-		if !f.Config.HasNickname(p.AccountId) {
+		if !f.Config.HasNickname(p.AccountId.String()) {
 			continue
 		}
 
 		// Create section for AccountNickname-PermissionSet profile
-		p.Name = fmt.Sprintf("%s-%s", f.Config.NicknameMapping[p.AccountId], p.RoleName)
+		name, err = NewProfileName(fmt.Sprintf("%s-%s", f.Config.NicknameMapping[p.AccountId.String()], p.RoleName.String()))
+    if err != nil {
+			return payload, err
+    }
+    p.Name = name
 		if err := f.addProfileSection(p, payload); err != nil {
 			return payload, err
 		}
@@ -104,7 +113,7 @@ func (f *FileBuilder) addSSOSection(file *ini.File) error {
 		return err
 	}
 
-	if _, err := section.NewKey(SSORegionKey, f.Config.Region); err != nil {
+	if _, err := section.NewKey(SSORegionKey, f.Config.Region.String()); err != nil {
 		return err
 	}
 
@@ -137,15 +146,15 @@ func (f *FileBuilder) addProfileSection(p Profile, file *ini.File) error {
 	// Add a comment describing the profile and session duration
 	section.Comment = fmt.Sprintf("# %s. Session Duration: %s", p.Description, p.SessionDuration)
 
-	if _, err := section.NewKey(SSOSessionAttrKey, p.SessionName); err != nil {
+	if _, err := section.NewKey(SSOSessionAttrKey, p.SessionName.String()); err != nil {
 		return err
 	}
 
-	if _, err := section.NewKey(SSOAccountIdKey, p.AccountId); err != nil {
+	if _, err := section.NewKey(SSOAccountIdKey, p.AccountId.String()); err != nil {
 		return err
 	}
 
-	if _, err := section.NewKey(SSORoleNameKey, p.RoleName); err != nil {
+	if _, err := section.NewKey(SSORoleNameKey, p.RoleName.String()); err != nil {
 		return err
 	}
 

@@ -17,3 +17,4 @@
 # Derived directories
 .build
 .dist
+.claude/*.local.*

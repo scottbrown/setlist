@@ -10,9 +10,9 @@ import (
 // use with AWS SSO authentication.
 type ConfigFile struct {
 	SessionName     string            // Name of the SSO session
-	IdentityStoreId string            // The unique identity store ID
+	IdentityStoreId IdentityStoreId   // The unique identity store ID
 	FriendlyName    string            // Alt name used for the SSO instance
-	Region          string            // AWS region
+	Region          Region            // AWS region
 	Profiles        []Profile         // List of AWS profiles
 	NicknameMapping map[string]string // Mapping of account IDs to nicknames
 }
@@ -20,7 +20,7 @@ type ConfigFile struct {
 // StartURL constructs the AWS SSO start URL based on the IdentityStoreId
 // or FriendlyName.
 func (c *ConfigFile) StartURL() string {
-	subdomain := c.IdentityStoreId
+	subdomain := c.IdentityStoreId.String()
 
 	if c.hasFriendlyName() {
 		subdomain = c.FriendlyName

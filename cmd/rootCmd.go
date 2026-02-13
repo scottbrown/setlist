@@ -104,11 +104,21 @@ func buildConfigFile(
 	accounts []orgtypes.Account,
 	nicknameMapping map[string]string,
 ) (setlist.ConfigFile, error) {
+  identityStoreId, err := setlist.NewIdentityStoreId(*instance.IdentityStoreId)
+  if err != nil {
+    return setlist.ConfigFile{}, err
+  }
+
+  region, err := setlist.NewRegion(ssoRegion)
+  if err != nil {
+    return setlist.ConfigFile{}, err
+  }
+
 	configFile := setlist.ConfigFile{
 		SessionName:     ssoSession,
-		IdentityStoreId: *instance.IdentityStoreId,
+		IdentityStoreId: identityStoreId,
 		FriendlyName:    ssoFriendlyName,
-		Region:          ssoRegion,
+		Region:          region,
 		NicknameMapping: nicknameMapping,
 	}
 
@@ -165,12 +175,38 @@ func buildAccountProfiles(
 			continue
 		}
 
+    profileDesc, err := setlist.NewProfileDescription(*p.Description)
+    if err != nil {
+      fmt.Fprintln(os.Stderr, err.Error())
+      continue
+    }
+    sessionDuration, err := setlist.NewSessionDuration(*p.SessionDuration)
+    if err != nil {
+      fmt.Fprintln(os.Stderr, err.Error())
+      continue
+    }
+    sessionName, err := setlist.NewSessionName(ssoSession)
+    if err != nil {
+      fmt.Fprintln(os.Stderr, err.Error())
+      continue
+    }
+    accountId, err := setlist.NewAWSAccountId(*account.Id)
+    if err != nil {
+      fmt.Fprintln(os.Stderr, err.Error())
+      continue
+    }
+    roleName, err := setlist.NewRoleName(*p.Name)
+    if err != nil {
+      fmt.Fprintln(os.Stderr, err.Error())
+      continue
+    }
+
 		profile := setlist.Profile{
-			Description:     *p.Description,
-			SessionDuration: *p.SessionDuration,
-			SessionName:     ssoSession,
-			AccountId:       *account.Id,
-			RoleName:        *p.Name,
+			Description:     profileDesc,
+			SessionDuration: sessionDuration,
+			SessionName:     sessionName,
+			AccountId:       accountId,
+			RoleName:        roleName,
 		}
 
 		profiles = append(profiles, profile)

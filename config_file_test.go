@@ -27,8 +27,13 @@ func TestStartUrl(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
+      identityStoreId, err := NewIdentityStoreId(tc.identityStoreID)
+      if err != nil {
+        t.Errorf("received nil: %v", err)
+      }
+
 			c := ConfigFile{
-				IdentityStoreId: tc.identityStoreID,
+				IdentityStoreId: identityStoreId,
 				FriendlyName:    tc.ssoFriendlyName,
 			}
 			actual := c.StartURL()
