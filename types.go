@@ -1,8 +1,8 @@
 package setlist
 
 import (
-  "errors"
-  "strings"
+	"errors"
+	"strings"
 )
 
 var ErrEmptyString = errors.New("cannot be an empty string")
@@ -14,29 +14,29 @@ type IdentityStoreId string
 type Region string
 
 func NewIdentityStoreId(id string) (IdentityStoreId, error) {
-  if id == "" {
-    return IdentityStoreId(""), ErrEmptyString
-  }
+	if id == "" {
+		return IdentityStoreId(""), ErrEmptyString
+	}
 
-  if !strings.HasPrefix(id, "d-") {
-    return IdentityStoreId(""), ErrWrongFormat
-  }
+	if !strings.HasPrefix(id, "d-") {
+		return IdentityStoreId(""), ErrWrongFormat
+	}
 
-  return IdentityStoreId(id), nil
+	return IdentityStoreId(id), nil
 }
 
 func (i IdentityStoreId) String() string {
-  return string(i)
+	return string(i)
 }
 
 func NewRegion(region string) (Region, error) {
-  if region == "" {
-    return Region(""), ErrEmptyString
-  }
+	if region == "" {
+		return Region(""), ErrEmptyString
+	}
 
-  return Region(region), nil
+	return Region(region), nil
 }
 
 func (r Region) String() string {
-  return string(r)
+	return string(r)
 }
