@@ -99,7 +99,7 @@ func loadAWSConfig(ctx context.Context) (aws.Config, error) {
 // buildConfigFile constructs the configuration file with all profiles
 func buildConfigFile(
 	ctx context.Context,
-	ssoClient *ssoadmin.Client,
+	ssoClient setlist.SSOAdminClient,
 	instance ssotypes.InstanceMetadata,
 	accounts []orgtypes.Account,
 	nicknameMapping map[string]string,
@@ -134,7 +134,7 @@ func buildConfigFile(
 // buildProfiles builds all the profile configurations
 func buildProfiles(
 	ctx context.Context,
-	ssoClient *ssoadmin.Client,
+	ssoClient setlist.SSOAdminClient,
 	instance ssotypes.InstanceMetadata,
 	accounts []orgtypes.Account,
 ) ([]setlist.Profile, error) {

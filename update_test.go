@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// mockHTTPClient is a mock implementation of the HTTP client for testing
+// mockHTTPClient is a mock implementation of the HTTPDoer interface for testing
 type mockHTTPClient struct {
 	DoFunc func(req *http.Request) (*http.Response, error)
 }
@@ -21,64 +21,6 @@ func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) {
 		return m.DoFunc(req)
 	}
 	return nil, errors.New("DoFunc not implemented")
-}
-
-// Modify the testCheckForUpdates function to properly handle the mock client
-func testCheckForUpdates(ctx context.Context, client *mockHTTPClient) (*UpdateInfo, error) {
-	// First check if context is canceled
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, GithubAPI, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", "Setlist-UpdateCheck/"+VERSION)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("non-200 status code received")
-	}
-
-	var release ReleaseInfo
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return nil, err
-	}
-
-	// Clean the version strings
-	tagVersion := release.TagName
-	currentVersion := VERSION
-
-	// Remove 'v' prefix if present
-	if len(tagVersion) > 0 && tagVersion[0] == 'v' {
-		tagVersion = tagVersion[1:]
-	}
-	if len(currentVersion) > 0 && currentVersion[0] == 'v' {
-		currentVersion = currentVersion[1:]
-	}
-
-	// Compare versions
-	isNewer, err := compareVersions(currentVersion, tagVersion)
-	if err != nil {
-		return nil, err
-	}
-	if isNewer {
-		return &UpdateInfo{
-			CurrentVersion: VERSION,
-			LatestVersion:  release.TagName,
-			ReleaseURL:     release.HTMLURL,
-			ReleaseDate:    release.PublishedAt,
-		}, nil
-	}
-
-	return nil, nil
 }
 
 func TestCompareVersions(t *testing.T) {
@@ -119,7 +61,6 @@ func TestCompareVersions(t *testing.T) {
 }
 
 func TestCheckForUpdates(t *testing.T) {
-	// Store the original VERSION to restore it after tests
 	originalVersion := VERSION
 	defer func() { VERSION = originalVersion }()
 
@@ -171,7 +112,7 @@ func TestCheckForUpdates(t *testing.T) {
 			expectUpdate: false,
 		},
 		{
-			name:           "HTTP error",
+			name:           "HTTP error status code",
 			currentVersion: "1.0.0",
 			mockResponse:   nil,
 			statusCode:     http.StatusInternalServerError,
@@ -182,10 +123,8 @@ func TestCheckForUpdates(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set current version for the test
 			VERSION = tt.currentVersion
 
-			// Create a mock HTTP client
 			mockClient := &mockHTTPClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
 					if tt.statusCode != http.StatusOK {
@@ -203,20 +142,16 @@ func TestCheckForUpdates(t *testing.T) {
 				},
 			}
 
-			// Run the test
-			updateInfo, err := testCheckForUpdates(context.Background(), mockClient)
+			updateInfo, err := CheckForUpdates(context.Background(), mockClient)
 
-			// Check error expectation
 			if (err != nil) != tt.expectError {
 				t.Errorf("Expected error: %v, got: %v (error: %v)", tt.expectError, err != nil, err)
 			}
 
-			// Check update expectation
 			if (updateInfo != nil) != tt.expectUpdate {
 				t.Errorf("Expected update: %v, got: %v", tt.expectUpdate, updateInfo != nil)
 			}
 
-			// If an update is expected, verify its properties
 			if tt.expectUpdate && updateInfo != nil {
 				if updateInfo.CurrentVersion != VERSION {
 					t.Errorf("Expected current version %s, got %s", VERSION, updateInfo.CurrentVersion)
@@ -234,9 +169,7 @@ func TestCheckForUpdates(t *testing.T) {
 	}
 }
 
-// Test specifically for JSON parsing errors
 func TestCheckForUpdatesJSONError(t *testing.T) {
-	// Create a mock HTTP client that returns invalid JSON
 	mockClient := &mockHTTPClient{
 		DoFunc: func(req *http.Request) (*http.Response, error) {
 			return &http.Response{
@@ -246,31 +179,36 @@ func TestCheckForUpdatesJSONError(t *testing.T) {
 		},
 	}
 
-	// Run the test
-	_, err := testCheckForUpdates(context.Background(), mockClient)
-
-	// Should return an error for invalid JSON
+	_, err := CheckForUpdates(context.Background(), mockClient)
 	if err == nil {
 		t.Errorf("Expected error for invalid JSON, got nil")
 	}
 }
 
-// TestCheckForUpdatesWithContext tests that the context is respected
-func TestCheckForUpdatesWithContext(t *testing.T) {
-	// Create a context that's already canceled
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel immediately
-
-	// Create a mock client - this should not be called
+func TestCheckForUpdatesHTTPError(t *testing.T) {
 	mockClient := &mockHTTPClient{
 		DoFunc: func(req *http.Request) (*http.Response, error) {
-			t.Error("HTTP client should not have been called with canceled context")
-			return nil, nil
+			return nil, errors.New("network error")
 		},
 	}
 
-	// Function should return an error without calling the HTTP client
-	_, err := testCheckForUpdates(ctx, mockClient)
+	_, err := CheckForUpdates(context.Background(), mockClient)
+	if err == nil {
+		t.Errorf("Expected error for HTTP failure, got nil")
+	}
+}
+
+func TestCheckForUpdatesWithContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	mockClient := &mockHTTPClient{
+		DoFunc: func(req *http.Request) (*http.Response, error) {
+			return nil, req.Context().Err()
+		},
+	}
+
+	_, err := CheckForUpdates(ctx, mockClient)
 	if err == nil {
 		t.Error("Expected context cancellation error, got nil")
 	}

@@ -15,6 +15,11 @@ const (
 	GithubAPI = "https://api.github.com/repos/scottbrown/setlist/releases/latest"
 )
 
+// HTTPDoer is an interface for making HTTP requests.
+type HTTPDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 // ReleaseInfo represents the GitHub API response for a release
 type ReleaseInfo struct {
 	TagName     string    `json:"tag_name"`
@@ -25,12 +30,7 @@ type ReleaseInfo struct {
 
 // CheckForUpdates compares the current version with the latest release
 // and returns information about a newer version if available
-func CheckForUpdates(ctx context.Context) (*UpdateInfo, error) {
-	// Create an HTTP client with reasonable timeout
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
-
+func CheckForUpdates(ctx context.Context, client HTTPDoer) (*UpdateInfo, error) {
 	// Create request with context
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, GithubAPI, nil)
 	if err != nil {
