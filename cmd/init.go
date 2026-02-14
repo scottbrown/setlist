@@ -74,6 +74,8 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&listAccounts, FlagListAccounts, false, "List all available AWS accounts")
 	rootCmd.PersistentFlags().StringVar(&includeAccounts, FlagIncludeAccounts, "", "Comma-delimited list of account IDs to include (mutually exclusive with --exclude-accounts)")
 	rootCmd.PersistentFlags().StringVar(&excludeAccounts, FlagExcludeAccounts, "", "Comma-delimited list of account IDs to exclude (mutually exclusive with --include-accounts)")
+	rootCmd.PersistentFlags().StringVar(&includePermissionSets, FlagIncludePermissionSets, "", "Comma-delimited list of permission set names to include (mutually exclusive with --exclude-permission-sets)")
+	rootCmd.PersistentFlags().StringVar(&excludePermissionSets, FlagExcludePermissionSets, "", "Comma-delimited list of permission set names to exclude (mutually exclusive with --include-permission-sets)")
 
 	rootCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
 		if permissions || checkUpdate || listAccounts {
