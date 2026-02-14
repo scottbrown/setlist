@@ -58,6 +58,21 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to list AWS accounts: %w", err)
 	}
 
+	includeList, err := setlist.ParseAccountIdList(includeAccounts)
+	if err != nil {
+		return fmt.Errorf("invalid include-accounts: %w", err)
+	}
+
+	excludeList, err := setlist.ParseAccountIdList(excludeAccounts)
+	if err != nil {
+		return fmt.Errorf("invalid exclude-accounts: %w", err)
+	}
+
+	accounts, err = setlist.FilterAccounts(accounts, includeList, excludeList)
+	if err != nil {
+		return fmt.Errorf("account filter error: %w", err)
+	}
+
 	nicknameMapping, err := setlist.ParseNicknameMapping(mapping)
 	if err != nil {
 		return fmt.Errorf("invalid mapping format: %w", err)
