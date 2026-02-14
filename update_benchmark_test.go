@@ -29,7 +29,7 @@ func BenchmarkCompareVersions(b *testing.B) {
 
 			// Run the benchmark
 			for i := 0; i < b.N; i++ {
-				_ = compareVersions(bc.currentVersion, bc.latestVersion)
+				_, _ = compareVersions(bc.currentVersion, bc.latestVersion)
 			}
 		})
 	}
@@ -66,7 +66,7 @@ func BenchmarkCompareVersionsWithPrefixes(b *testing.B) {
 
 			// Run the benchmark
 			for i := 0; i < b.N; i++ {
-				_ = compareVersions(current, latest)
+				_, _ = compareVersions(current, latest)
 			}
 		})
 	}

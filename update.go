@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -61,7 +62,11 @@ func CheckForUpdates(ctx context.Context) (*UpdateInfo, error) {
 	currentVersion := strings.TrimPrefix(VERSION, "v")
 
 	// Compare versions
-	if isNewer := compareVersions(currentVersion, tagVersion); !isNewer {
+	isNewer, err := compareVersions(currentVersion, tagVersion)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compare versions: %w", err)
+	}
+	if !isNewer {
 		return nil, nil // No update available
 	}
 
@@ -83,25 +88,30 @@ type UpdateInfo struct {
 
 // compareVersions compares two semantic version strings
 // Returns true if latestVersion is newer than currentVersion
-func compareVersions(currentVersion, latestVersion string) bool {
+func compareVersions(currentVersion, latestVersion string) (bool, error) {
 	// Split versions by dots
 	currentParts := strings.Split(currentVersion, ".")
 	latestParts := strings.Split(latestVersion, ".")
 
 	// Compare major, minor, patch
 	for i := 0; i < len(currentParts) && i < len(latestParts); i++ {
-		var current, latest int
-		fmt.Sscanf(currentParts[i], "%d", &current)
-		fmt.Sscanf(latestParts[i], "%d", &latest)
+		current, err := strconv.Atoi(currentParts[i])
+		if err != nil {
+			return false, fmt.Errorf("invalid version segment %q: %w", currentParts[i], err)
+		}
+		latest, err := strconv.Atoi(latestParts[i])
+		if err != nil {
+			return false, fmt.Errorf("invalid version segment %q: %w", latestParts[i], err)
+		}
 
 		if latest > current {
-			return true
+			return true, nil
 		}
 		if current > latest {
-			return false
+			return false, nil
 		}
 	}
 
 	// If we get here and latestParts has more elements, it's newer
-	return len(latestParts) > len(currentParts)
+	return len(latestParts) > len(currentParts), nil
 }
