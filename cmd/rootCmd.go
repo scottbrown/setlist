@@ -82,7 +82,17 @@ func handleRoot(cmd *cobra.Command, args []string) error {
 		return displayAccounts(accounts)
 	}
 
-	configFile, err := buildConfigFile(ctx, ssoClient, instance, accounts, nicknameMapping)
+	includePSList, err := setlist.ParsePermissionSetList(includePermissionSets)
+	if err != nil {
+		return fmt.Errorf("invalid include-permission-sets: %w", err)
+	}
+
+	excludePSList, err := setlist.ParsePermissionSetList(excludePermissionSets)
+	if err != nil {
+		return fmt.Errorf("invalid exclude-permission-sets: %w", err)
+	}
+
+	configFile, err := buildConfigFile(ctx, ssoClient, instance, accounts, nicknameMapping, includePSList, excludePSList)
 	if err != nil {
 		return err
 	}
@@ -118,6 +128,7 @@ func buildConfigFile(
 	instance ssotypes.InstanceMetadata,
 	accounts []orgtypes.Account,
 	nicknameMapping map[string]string,
+	includePS, excludePS []string,
 ) (setlist.ConfigFile, error) {
 	identityStoreId, err := setlist.NewIdentityStoreId(*instance.IdentityStoreId)
 	if err != nil {
@@ -137,7 +148,7 @@ func buildConfigFile(
 		NicknameMapping: nicknameMapping,
 	}
 
-	profiles, err := buildProfiles(ctx, ssoClient, instance, accounts)
+	profiles, err := buildProfiles(ctx, ssoClient, instance, accounts, includePS, excludePS)
 	if err != nil {
 		return configFile, err
 	}
@@ -152,6 +163,7 @@ func buildProfiles(
 	ssoClient setlist.SSOAdminClient,
 	instance ssotypes.InstanceMetadata,
 	accounts []orgtypes.Account,
+	includePS, excludePS []string,
 ) ([]setlist.Profile, error) {
 	profiles := []setlist.Profile{}
 
@@ -164,6 +176,11 @@ func buildProfiles(
 		permissionSets, err := setlist.PermissionSets(ctx, ssoClient, *instance.InstanceArn, *account.Id)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list permission sets for account %s: %w", *account.Id, err)
+		}
+
+		permissionSets, err = setlist.FilterPermissionSets(permissionSets, includePS, excludePS)
+		if err != nil {
+			return nil, fmt.Errorf("permission set filter error: %w", err)
 		}
 
 		accountProfiles, err := buildAccountProfiles(account, permissionSets)

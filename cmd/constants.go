@@ -18,18 +18,20 @@ Parses an AWS organizations permission set structure to build a complete .aws/co
 
 // Various flag constants for command-line options.
 const (
-	FlagSSOSession      string = "sso-session"
-	FlagSSORegion       string = "sso-region"
-	FlagProfile         string = "profile"
-	FlagMapping         string = "mapping"
-	FlagOutput          string = "output"
-	FlagPermissions     string = "permissions"
-	FlagStdout          string = "stdout"
-	FlagSSOFriendlyName string = "sso-friendly-name"
-	FlagCheckUpdate     string = "check-update"
-	FlagListAccounts    string = "list-accounts"
-	FlagIncludeAccounts string = "include-accounts"
-	FlagExcludeAccounts string = "exclude-accounts"
+	FlagSSOSession            string = "sso-session"
+	FlagSSORegion             string = "sso-region"
+	FlagProfile               string = "profile"
+	FlagMapping               string = "mapping"
+	FlagOutput                string = "output"
+	FlagPermissions           string = "permissions"
+	FlagStdout                string = "stdout"
+	FlagSSOFriendlyName       string = "sso-friendly-name"
+	FlagCheckUpdate           string = "check-update"
+	FlagListAccounts          string = "list-accounts"
+	FlagIncludeAccounts       string = "include-accounts"
+	FlagExcludeAccounts       string = "exclude-accounts"
+	FlagIncludePermissionSets string = "include-permission-sets"
+	FlagExcludePermissionSets string = "exclude-permission-sets"
 )
 
 // Default output filename if no filename is specified

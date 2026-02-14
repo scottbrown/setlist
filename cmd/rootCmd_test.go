@@ -480,7 +480,7 @@ func TestBuildConfigFile(t *testing.T) {
 			ssoRegion = tt.ssoRegion
 			ssoFriendlyName = ""
 
-			configFile, err := buildConfigFile(context.Background(), tt.client, tt.instance, tt.accounts, tt.nicknames)
+			configFile, err := buildConfigFile(context.Background(), tt.client, tt.instance, tt.accounts, tt.nicknames, nil, nil)
 
 			if (err != nil) != tt.expectError {
 				t.Errorf("buildConfigFile() error = %v, expectError %v", err, tt.expectError)
@@ -717,7 +717,7 @@ func TestBuildProfiles(t *testing.T) {
 				IdentityStoreId: aws.String("d-1234567890"),
 			}
 
-			profiles, err := buildProfiles(context.Background(), tt.client, instance, tt.accounts)
+			profiles, err := buildProfiles(context.Background(), tt.client, instance, tt.accounts, nil, nil)
 
 			if (err != nil) != tt.expectError {
 				t.Errorf("buildProfiles() error = %v, expectError %v", err, tt.expectError)
