@@ -65,7 +65,11 @@ func testCheckForUpdates(ctx context.Context, client *mockHTTPClient) (*UpdateIn
 	}
 
 	// Compare versions
-	if isNewer := compareVersions(currentVersion, tagVersion); isNewer {
+	isNewer, err := compareVersions(currentVersion, tagVersion)
+	if err != nil {
+		return nil, err
+	}
+	if isNewer {
 		return &UpdateInfo{
 			CurrentVersion: VERSION,
 			LatestVersion:  release.TagName,
@@ -83,22 +87,30 @@ func TestCompareVersions(t *testing.T) {
 		currentVersion string
 		latestVersion  string
 		isNewer        bool
+		expectError    bool
 	}{
-		{"equal versions", "1.2.3", "1.2.3", false},
-		{"newer major version", "1.2.3", "2.0.0", true},
-		{"older major version", "2.0.0", "1.2.3", false},
-		{"newer minor version", "1.2.3", "1.3.0", true},
-		{"older minor version", "1.3.0", "1.2.0", false},
-		{"newer patch version", "1.2.3", "1.2.4", true},
-		{"older patch version", "1.2.3", "1.2.2", false},
-		{"different lengths", "1.2", "1.2.1", true},
-		{"different lengths reverse", "1.2.1", "1.2", false},
+		{"equal versions", "1.2.3", "1.2.3", false, false},
+		{"newer major version", "1.2.3", "2.0.0", true, false},
+		{"older major version", "2.0.0", "1.2.3", false, false},
+		{"newer minor version", "1.2.3", "1.3.0", true, false},
+		{"older minor version", "1.3.0", "1.2.0", false, false},
+		{"newer patch version", "1.2.3", "1.2.4", true, false},
+		{"older patch version", "1.2.3", "1.2.2", false, false},
+		{"different lengths", "1.2", "1.2.1", true, false},
+		{"different lengths reverse", "1.2.1", "1.2", false, false},
+		{"non-numeric current", "1.beta.3", "1.2.3", false, true},
+		{"non-numeric latest", "1.2.3", "1.2.beta", false, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := compareVersions(tt.currentVersion, tt.latestVersion)
-			if result != tt.isNewer {
+			result, err := compareVersions(tt.currentVersion, tt.latestVersion)
+			if (err != nil) != tt.expectError {
+				t.Errorf("compareVersions(%q, %q) error = %v, expectError %v",
+					tt.currentVersion, tt.latestVersion, err, tt.expectError)
+				return
+			}
+			if !tt.expectError && result != tt.isNewer {
 				t.Errorf("compareVersions(%q, %q) = %v, want %v",
 					tt.currentVersion, tt.latestVersion, result, tt.isNewer)
 			}
