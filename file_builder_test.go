@@ -105,3 +105,150 @@ func TestFileBuilderErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestFileBuilderBuildEmptyProfiles(t *testing.T) {
+	config := ConfigFile{
+		SessionName:     "test-session",
+		IdentityStoreId: "d-1234567890",
+		Region:          "us-east-1",
+		Profiles:        []Profile{},
+	}
+
+	builder := NewFileBuilder(config)
+	payload, err := builder.Build()
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	// Should have default and sso-session sections but no profile sections
+	sections := payload.SectionStrings()
+	for _, s := range sections {
+		if strings.HasPrefix(s, "profile ") {
+			t.Errorf("Expected no profile sections, found: %s", s)
+		}
+	}
+}
+
+func TestFileBuilderBuildWithNicknameMapping(t *testing.T) {
+	config := ConfigFile{
+		SessionName:     "test-session",
+		IdentityStoreId: "d-1234567890",
+		Region:          "us-east-1",
+		Profiles: []Profile{
+			{
+				SessionName: "test-session",
+				AccountId:   "123456789012",
+				RoleName:    "AdminRole",
+				Description: "Admin access",
+			},
+		},
+		NicknameMapping: map[string]string{
+			"123456789012": "prod",
+		},
+	}
+
+	builder := NewFileBuilder(config)
+	payload, err := builder.Build()
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	// Should have both the account ID profile and the nickname profile
+	accountSection := payload.Section("profile 123456789012-AdminRole")
+	if accountSection == nil {
+		t.Error("Expected account ID profile section")
+	}
+
+	nicknameSection := payload.Section("profile prod-AdminRole")
+	if nicknameSection == nil {
+		t.Error("Expected nickname profile section")
+	}
+}
+
+func TestFileBuilderBuildProfileMissingAccountId(t *testing.T) {
+	config := ConfigFile{
+		SessionName:     "test-session",
+		IdentityStoreId: "d-1234567890",
+		Region:          "us-east-1",
+		Profiles: []Profile{
+			{
+				SessionName: "test-session",
+				AccountId:   "",
+				RoleName:    "TestRole",
+			},
+		},
+	}
+
+	builder := NewFileBuilder(config)
+	_, err := builder.Build()
+	if err == nil {
+		t.Error("Expected error for profile missing AccountId, got nil")
+	}
+}
+
+func TestFileBuilderBuildProfileMissingRoleName(t *testing.T) {
+	config := ConfigFile{
+		SessionName:     "test-session",
+		IdentityStoreId: "d-1234567890",
+		Region:          "us-east-1",
+		Profiles: []Profile{
+			{
+				SessionName: "test-session",
+				AccountId:   "123456789012",
+				RoleName:    "",
+			},
+		},
+	}
+
+	builder := NewFileBuilder(config)
+	_, err := builder.Build()
+	if err == nil {
+		t.Error("Expected error for profile missing RoleName, got nil")
+	}
+}
+
+func TestFileBuilderBuildOutputContent(t *testing.T) {
+	config := ConfigFile{
+		SessionName:     "my-sso",
+		IdentityStoreId: "d-1234567890",
+		Region:          "ca-central-1",
+		Profiles: []Profile{
+			{
+				SessionName:     "my-sso",
+				AccountId:       "123456789012",
+				RoleName:        "ReadOnly",
+				Description:     "Read only access",
+				SessionDuration: "PT1H",
+			},
+		},
+	}
+
+	builder := NewFileBuilder(config)
+	payload, err := builder.Build()
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	// Verify the INI content
+	var buf strings.Builder
+	if _, err := payload.WriteTo(&buf); err != nil {
+		t.Fatalf("Failed to write INI: %v", err)
+	}
+	output := buf.String()
+
+	checks := []string{
+		"sso_session",
+		"my-sso",
+		"https://d-1234567890.awsapps.com/start",
+		"ca-central-1",
+		"123456789012",
+		"ReadOnly",
+		"[profile 123456789012-ReadOnly]",
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(output, check) {
+			t.Errorf("Expected output to contain %q, got:\n%s", check, output)
+		}
+	}
+}

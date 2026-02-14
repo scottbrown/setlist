@@ -3,6 +3,7 @@ package setlist
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,6 +13,124 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssoadmin"
 	"github.com/aws/aws-sdk-go-v2/service/ssoadmin/types"
 )
+
+type mockOrganizationsClient struct {
+	ListAccountsFunc func(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error)
+}
+
+func (m *mockOrganizationsClient) ListAccounts(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error) {
+	return m.ListAccountsFunc(ctx, params, optFns...)
+}
+
+func TestListAccounts(t *testing.T) {
+	tests := []struct {
+		name          string
+		client        *mockOrganizationsClient
+		expectedCount int
+		expectError   bool
+	}{
+		{
+			name: "single page of results",
+			client: &mockOrganizationsClient{
+				ListAccountsFunc: func(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error) {
+					return &organizations.ListAccountsOutput{
+						Accounts: []orgTypes.Account{
+							{Id: aws.String("111111111111"), Name: aws.String("Account 1")},
+							{Id: aws.String("222222222222"), Name: aws.String("Account 2")},
+						},
+					}, nil
+				},
+			},
+			expectedCount: 2,
+			expectError:   false,
+		},
+		{
+			name: "multiple pages of results",
+			client: &mockOrganizationsClient{
+				ListAccountsFunc: func() func(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error) {
+					callCount := 0
+					return func(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error) {
+						callCount++
+						if callCount == 1 {
+							return &organizations.ListAccountsOutput{
+								Accounts: []orgTypes.Account{
+									{Id: aws.String("111111111111"), Name: aws.String("Account 1")},
+								},
+								NextToken: aws.String("page2"),
+							}, nil
+						}
+						return &organizations.ListAccountsOutput{
+							Accounts: []orgTypes.Account{
+								{Id: aws.String("222222222222"), Name: aws.String("Account 2")},
+							},
+						}, nil
+					}
+				}(),
+			},
+			expectedCount: 2,
+			expectError:   false,
+		},
+		{
+			name: "API error on first call",
+			client: &mockOrganizationsClient{
+				ListAccountsFunc: func(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error) {
+					return nil, fmt.Errorf("access denied")
+				},
+			},
+			expectedCount: 0,
+			expectError:   true,
+		},
+		{
+			name: "API error on second page",
+			client: &mockOrganizationsClient{
+				ListAccountsFunc: func() func(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error) {
+					callCount := 0
+					return func(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error) {
+						callCount++
+						if callCount == 1 {
+							return &organizations.ListAccountsOutput{
+								Accounts: []orgTypes.Account{
+									{Id: aws.String("111111111111"), Name: aws.String("Account 1")},
+								},
+								NextToken: aws.String("page2"),
+							}, nil
+						}
+						return nil, fmt.Errorf("throttled")
+					}
+				}(),
+			},
+			expectedCount: 0,
+			expectError:   true,
+		},
+		{
+			name: "empty results",
+			client: &mockOrganizationsClient{
+				ListAccountsFunc: func(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error) {
+					return &organizations.ListAccountsOutput{
+						Accounts: []orgTypes.Account{},
+					}, nil
+				},
+			},
+			expectedCount: 0,
+			expectError:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			accounts, err := ListAccounts(context.Background(), tt.client)
+
+			if (err != nil) != tt.expectError {
+				t.Errorf("ListAccounts() error = %v, expectError %v", err, tt.expectError)
+				return
+			}
+
+			if !tt.expectError && len(accounts) != tt.expectedCount {
+				t.Errorf("Expected %d accounts, got %d", tt.expectedCount, len(accounts))
+			}
+		})
+	}
+}
 
 // Mock SSO Admin client that waits before responding
 type delaySSOAdminClient struct {
