@@ -11,4 +11,6 @@ var (
 	permissions     bool   // Flag to print the permissions needed and exit
 	checkUpdate     bool   // Flag to check if an update is available
 	listAccounts    bool   // Only list AWS accounts found
+	includeAccounts string // Comma-delimited list of account IDs to include
+	excludeAccounts string // Comma-delimited list of account IDs to exclude
 )
