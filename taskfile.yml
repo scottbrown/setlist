@@ -13,7 +13,7 @@ vars:
   dist_dir: "{{ .pwd }}/.dist"
 
   git_version:
-    sh: git describe --tags --always --dirty
+    sh: git tag --points-at HEAD | head -1 | grep . || git rev-parse --abbrev-ref HEAD
   git_commit:
     sh: git rev-parse --short HEAD
   ldflags: "-X {{ .app_repo }}.VERSION={{ .git_version }} -X {{ .app_repo }}.COMMIT={{ .git_commit }}"
