@@ -12,16 +12,22 @@ vars:
   build_dir: "{{ .pwd }}/.build"
   dist_dir: "{{ .pwd }}/.dist"
 
+  git_version:
+    sh: git tag --points-at HEAD | head -1 | grep . || git rev-parse --abbrev-ref HEAD
+  git_commit:
+    sh: git rev-parse --short HEAD
+  ldflags: "-X {{ .app_repo }}.VERSION={{ .git_version }} -X {{ .app_repo }}.COMMIT={{ .git_commit }}"
+
 tasks:
   build:
     desc: "Builds a local artifact"
     cmds:
-      - go build -o {{ .build_dir }}/{{ .bin_name }} {{ .pkg_name }}
+      - go build -ldflags "{{ .ldflags }}" -o {{ .build_dir }}/{{ .bin_name }} {{ .pkg_name }}
 
   lambda-build:
     desc: "Builds the Lambda artifact"
     cmds:
-      - GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o {{ .build_dir }}/lambda/bootstrap {{ .app_repo }}/cmd/lambda
+      - GOOS=linux GOARCH=arm64 go build -ldflags "{{ .ldflags }}" -tags lambda.norpc -o {{ .build_dir }}/lambda/bootstrap {{ .app_repo }}/cmd/lambda
 
   fmt:
     desc: "Formats the code"
@@ -79,7 +85,7 @@ tasks:
     desc: "Builds a linux artifact"
     cmds:
       - for: [ amd64, arm64 ]
-        cmd: GOOS=$GOOS GOARCH={{ .ITEM }} go build -o {{ .build_dir }}/linux-{{ .ITEM }}/{{ .bin_name }} {{ .app_repo }}/cmd
+        cmd: GOOS=$GOOS GOARCH={{ .ITEM }} go build -ldflags "{{ .ldflags }}" -o {{ .build_dir }}/linux-{{ .ITEM }}/{{ .bin_name }} {{ .app_repo }}/cmd
     env:
       GOOS: linux
 
@@ -87,7 +93,7 @@ tasks:
     desc: "Builds a Windows artifact"
     cmds:
       - for: [ amd64, arm64 ]
-        cmd: GOOS=$GOOS GOARCH={{ .ITEM }} go build -o {{ .build_dir }}/windows-{{ .ITEM }}/{{ .bin_name }}.exe {{ .app_repo }}/cmd
+        cmd: GOOS=$GOOS GOARCH={{ .ITEM }} go build -ldflags "{{ .ldflags }}" -o {{ .build_dir }}/windows-{{ .ITEM }}/{{ .bin_name }}.exe {{ .app_repo }}/cmd
     env:
       GOOS: windows
 
@@ -95,7 +101,7 @@ tasks:
     desc: "Builds a MacOS artifact"
     cmds:
       - for: [ amd64, arm64 ]
-        cmd: GOOS=darwin GOARCH={{ .ITEM }} go build -o {{ .build_dir }}/darwin-{{ .ITEM }}/{{ .bin_name }} {{ .app_repo }}/cmd
+        cmd: GOOS=darwin GOARCH={{ .ITEM }} go build -ldflags "{{ .ldflags }}" -o {{ .build_dir }}/darwin-{{ .ITEM }}/{{ .bin_name }} {{ .app_repo }}/cmd
     env:
       GOOS: darwin
 
