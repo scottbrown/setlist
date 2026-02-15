@@ -138,6 +138,17 @@ type delaySSOAdminClient struct {
 	delay time.Duration
 }
 
+func (m *delaySSOAdminClient) ListPermissionSets(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+	select {
+	case <-time.After(m.delay):
+		return &ssoadmin.ListPermissionSetsOutput{
+			PermissionSets: []string{"test-permission-set-arn"},
+		}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
 func (m *delaySSOAdminClient) ListInstances(ctx context.Context, params *ssoadmin.ListInstancesInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListInstancesOutput, error) {
 	select {
 	case <-time.After(m.delay):

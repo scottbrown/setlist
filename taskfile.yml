@@ -18,6 +18,11 @@ tasks:
     cmds:
       - go build -o {{ .build_dir }}/{{ .bin_name }} {{ .pkg_name }}
 
+  lambda-build:
+    desc: "Builds the Lambda artifact"
+    cmds:
+      - GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o {{ .build_dir }}/lambda/bootstrap {{ .app_repo }}/cmd/lambda
+
   fmt:
     desc: "Formats the code"
     cmds:

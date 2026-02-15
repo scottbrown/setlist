@@ -2,7 +2,7 @@
 
 # SetList (formerly aws-config-creator)
 
-Setlist is a CLI tool that automates the creation of AWS config files for organizations using AWS SSO. It parses AWS Organizations and Permission Sets to build a complete .aws/config file with all permission sets provisioned across your AWS member accounts.
+Setlist is a CLI tool and Go library that automates the creation of AWS config files for organizations using AWS SSO. It parses AWS Organizations and Permission Sets to build a complete .aws/config file with all permission sets provisioned across your AWS member accounts.
 
 ## Why Setlist?
 Managing AWS credentials across multiple AWS accounts with SSO can be challenging. While AWS provides the aws sso configure command, it's tedious to use when you have:
@@ -58,6 +58,7 @@ This tool requires some readonly permissions from your AWS organization account.
 
 1. `organizations:ListAccounts`
 1. `sso:ListInstances`
+1. `sso:ListPermissionSets`
 1. `sso:ListPermissionSetsProvisionedToAccount`
 1. `sso:DescribePermissionSet`
 
@@ -109,18 +110,82 @@ setlist --sso-session myorg \
 
 By supplying a `--mapping` flag with a comma-delimited list of key=value pairs corresponding to AWS Account ID and its nickname, the tool will create the basic `.aws/config` profiles and then create a separate set of profiles that follow the format `[profile NICKNAME-PERMISSIONSETNAME]`.  For example: `[profile acme-AdministratorAccess]`.  This removes the need for your users to remember the 12-digit AWS Account ID, but also allows for backward-compatibility for those people that like using the AWS Account ID in the profile name.
 
+### Verbose Logging
+
+```bash
+# Enable verbose output to see what setlist is doing
+setlist --sso-session myorg --sso-region us-east-1 --verbose --stdout
+
+# Use JSON log format for structured logging
+setlist --sso-session myorg --sso-region us-east-1 --verbose --log-format json --stdout
+```
+
+### Listing Permission Sets
+
+```bash
+# List all permission sets available in the SSO instance
+setlist --list-permission-sets --sso-region us-east-1
+```
+
 ## Configuration Options
 
 |Flag|Short|Description|Required|
 |-|-|-|-|
-|--sso-session|-s|Nickname for the SSO session (e.g., organization name)|Yes
+|--sso-session|-s|Nickname for the SSO session (e.g., organization name)|Yes|
 |--sso-region|-r|AWS region where AWS SSO resides|Yes|
 |--profile|-p|AWS profile to use for authentication|No|
 |--mapping|-m|Comma-delimited account nickname mapping (format: id=nickname)|No|
 |--output|-o|Output file path (default: ./aws.config)|No|
 |--stdout||Write config to stdout instead of a file|No|
 |--sso-friendly-name||Alternative name for the SSO start URL|No|
-|--list-accounts|Lists all available AWS accounts|
+|--list-accounts||List all available AWS accounts|No|
+|--list-permission-sets||List all available permission sets in the SSO instance|No|
+|--verbose|-v|Enable verbose logging output|No|
+|--log-format||Log output format: "plain" (default) or "json"|No|
+|--include-accounts||Comma-delimited list of account IDs to include|No|
+|--exclude-accounts||Comma-delimited list of account IDs to exclude|No|
+|--include-permission-sets||Comma-delimited list of permission set names to include|No|
+|--exclude-permission-sets||Comma-delimited list of permission set names to exclude|No|
+|--check-update||Check if a newer version of the tool is available|No|
+|--permissions||Print the required AWS permissions and exit|No|
+
+## Library Usage
+
+Setlist can be used as a Go library. The `setlist.Generate()` function provides a high-level API for generating config files programmatically:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+
+    "github.com/scottbrown/setlist"
+
+    "github.com/aws/aws-sdk-go-v2/config"
+    "github.com/aws/aws-sdk-go-v2/service/organizations"
+    "github.com/aws/aws-sdk-go-v2/service/ssoadmin"
+)
+
+func main() {
+    ctx := context.Background()
+    cfg, _ := config.LoadDefaultConfig(ctx, config.WithRegion("us-east-1"))
+
+    configFile, err := setlist.Generate(ctx, setlist.GenerateInput{
+        SSOClient:   ssoadmin.NewFromConfig(cfg),
+        OrgClient:   organizations.NewFromConfig(cfg),
+        SessionName: "myorg",
+        Region:      "us-east-1",
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    builder := setlist.NewFileBuilder(configFile)
+    payload, _ := builder.Build()
+    payload.WriteTo(fmt.Stdout)
+}
+```
 
 ## Generated Config Format
 
@@ -155,6 +220,59 @@ sso_account_id = 123456789012
 sso_role_name = AdministratorAccess
 ```
 
+## Lambda Deployment
+
+Setlist can be deployed as an AWS Lambda function that generates config files on a schedule and uploads them to S3. This is useful for keeping a shared config file up to date automatically.
+
+### Building the Lambda
+
+```bash
+task lambda-build
+```
+
+### SAM Template
+
+A SAM template (`template.yaml`) is provided. Deploy with:
+
+```bash
+# Build the Lambda binary
+task lambda-build
+
+# Deploy with SAM
+sam deploy --guided \
+  --parameter-overrides \
+    SSOSession=myorg \
+    SSORegion=us-east-1 \
+    S3Bucket=my-config-bucket \
+    S3Key=aws.config
+```
+
+### Environment Variables
+
+|Variable|Description|Required|
+|-|-|-|
+|SSO_SESSION|Nickname for the SSO session|Yes|
+|SSO_REGION|AWS region where AWS SSO resides|Yes|
+|S3_BUCKET|S3 bucket for the generated config file|Yes|
+|S3_KEY|S3 object key for the config file|Yes|
+|SSO_FRIENDLY_NAME|Alternative name for the SSO start URL|No|
+|NICKNAME_MAPPING|Comma-delimited account nickname mapping|No|
+|INCLUDE_ACCOUNTS|Comma-delimited list of account IDs to include|No|
+|EXCLUDE_ACCOUNTS|Comma-delimited list of account IDs to exclude|No|
+|INCLUDE_PERMISSION_SETS|Comma-delimited list of permission set names to include|No|
+|EXCLUDE_PERMISSION_SETS|Comma-delimited list of permission set names to exclude|No|
+
+### Required IAM Permissions
+
+The Lambda execution role needs:
+
+- `organizations:ListAccounts`
+- `sso:ListInstances`
+- `sso:ListPermissionSets`
+- `sso:ListPermissionSetsProvisionedToAccount`
+- `sso:DescribePermissionSet`
+- `s3:PutObject` on the target S3 bucket/key
+
 ## Common Use Cases
 
 ### Team Onboarding
@@ -169,6 +287,10 @@ When permission sets change in your AWS Organization, quickly regenerate your co
 
 Use Setlist in CI/CD pipelines to ensure consistent AWS configuration across different environments.
 
+### Automated Config Updates
+
+Deploy as a Lambda function to automatically regenerate and upload shared config files to S3 on a schedule.
+
 ## Troubleshooting
 
 ### Permission Issues
@@ -176,9 +298,10 @@ Use Setlist in CI/CD pipelines to ensure consistent AWS configuration across dif
 If you encounter permission errors, ensure your AWS credentials have access to:
 
 - organizations:ListAccounts
-- sso-admin:ListInstances
-- sso-admin:ListPermissionSetsProvisionedToAccount
-- sso-admin:DescribePermissionSet
+- sso:ListInstances
+- sso:ListPermissionSets
+- sso:ListPermissionSetsProvisionedToAccount
+- sso:DescribePermissionSet
 
 ### Region Configuration
 
@@ -192,7 +315,7 @@ Ensure you have write permissions to the output file location.
 
 ### Prerequisites
 
-- Go 1.21 or newer
+- Go 1.24 or newer
 - [Task](https://go-task.dev)
 
 ### Setup Development Environment
@@ -228,9 +351,11 @@ task release VERSION=v1.2.3
 
 ### Project Structure
 
-- `cmd/`: Command-line interface code
-- `*.go`: Core functionality for AWS interactions and config generation
+- `cmd/`: CLI entry point
+- `cmd/lambda/`: Lambda function entry point
+- `*.go`: Core library for AWS interactions and config generation
 - `.github/workflows/`: CI/CD pipeline definitions
+- `template.yaml`: SAM template for Lambda deployment
 - `go.mod, go.sum`: Go module definitions
 - `taskfile.yml`: Task automation definitions
 

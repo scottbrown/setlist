@@ -22,6 +22,7 @@ type mockSSOAdminClient struct {
 
 	// Store the custom list function for pagination tests
 	ListPermissionSetsProvisionedToAccountFunc func(ctx context.Context, params *ssoadmin.ListPermissionSetsProvisionedToAccountInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsProvisionedToAccountOutput, error)
+	ListPermissionSetsFunc                     func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error)
 }
 
 func (m *mockSSOAdminClient) ListPermissionSetsProvisionedToAccount(ctx context.Context, params *ssoadmin.ListPermissionSetsProvisionedToAccountInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsProvisionedToAccountOutput, error) {
@@ -40,9 +41,155 @@ func (m *mockSSOAdminClient) DescribePermissionSet(ctx context.Context, params *
 	return m.describePermSetOutput, m.describePermSetError
 }
 
+func (m *mockSSOAdminClient) ListPermissionSets(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+	if m.ListPermissionSetsFunc != nil {
+		return m.ListPermissionSetsFunc(ctx, params, optFns...)
+	}
+	return nil, errors.New("not implemented in mock")
+}
+
 // Implement additional methods required by the interface but not used in our tests
 func (m *mockSSOAdminClient) ListInstances(ctx context.Context, params *ssoadmin.ListInstancesInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListInstancesOutput, error) {
 	return nil, errors.New("not implemented in mock")
+}
+
+func TestAllPermissionSets(t *testing.T) {
+	testInstanceArn := "arn:aws:sso:::instance/ssoins-12345678"
+
+	tests := []struct {
+		name             string
+		instanceArn      string
+		listFunc         func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error)
+		describeOutput   *ssoadmin.DescribePermissionSetOutput
+		describeError    error
+		expectedError    bool
+		expectedErrMsg   string
+		expectedPermSets int
+	}{
+		{
+			name:           "empty instance ARN",
+			instanceArn:    "",
+			expectedError:  true,
+			expectedErrMsg: "invalid parameter: empty instanceArn",
+		},
+		{
+			name:        "successful single page",
+			instanceArn: testInstanceArn,
+			listFunc: func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+				return &ssoadmin.ListPermissionSetsOutput{
+					PermissionSets: []string{"arn:aws:sso:::permissionSet/ps-111"},
+				}, nil
+			},
+			describeOutput: &ssoadmin.DescribePermissionSetOutput{
+				PermissionSet: &types.PermissionSet{
+					Name:        aws.String("AdminAccess"),
+					Description: aws.String("Full admin"),
+				},
+			},
+			expectedPermSets: 1,
+		},
+		{
+			name:        "pagination",
+			instanceArn: testInstanceArn,
+			listFunc: func() func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+				callCount := 0
+				return func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+					callCount++
+					if callCount == 1 {
+						return &ssoadmin.ListPermissionSetsOutput{
+							PermissionSets: []string{"arn:1"},
+							NextToken:      aws.String("page2"),
+						}, nil
+					}
+					return &ssoadmin.ListPermissionSetsOutput{
+						PermissionSets: []string{"arn:2"},
+					}, nil
+				}
+			}(),
+			describeOutput: &ssoadmin.DescribePermissionSetOutput{
+				PermissionSet: &types.PermissionSet{
+					Name:        aws.String("Role"),
+					Description: aws.String("A role"),
+				},
+			},
+			expectedPermSets: 2,
+		},
+		{
+			name:        "list API error",
+			instanceArn: testInstanceArn,
+			listFunc: func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+				return nil, errors.New("access denied")
+			},
+			expectedError:  true,
+			expectedErrMsg: "access denied",
+		},
+		{
+			name:        "empty results",
+			instanceArn: testInstanceArn,
+			listFunc: func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+				return &ssoadmin.ListPermissionSetsOutput{
+					PermissionSets: []string{},
+				}, nil
+			},
+			expectedPermSets: 0,
+		},
+		{
+			name:        "describe returns nil permission set",
+			instanceArn: testInstanceArn,
+			listFunc: func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+				return &ssoadmin.ListPermissionSetsOutput{
+					PermissionSets: []string{"arn:1"},
+				}, nil
+			},
+			describeOutput: &ssoadmin.DescribePermissionSetOutput{
+				PermissionSet: nil,
+			},
+			expectedError:  true,
+			expectedErrMsg: "nil permission set returned",
+		},
+		{
+			name:        "describe returns error",
+			instanceArn: testInstanceArn,
+			listFunc: func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+				return &ssoadmin.ListPermissionSetsOutput{
+					PermissionSets: []string{"arn:1"},
+				}, nil
+			},
+			describeError:  errors.New("describe failed"),
+			expectedError:  true,
+			expectedErrMsg: "describe failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &mockSSOAdminClient{
+				ListPermissionSetsFunc: tt.listFunc,
+				describePermSetOutput:  tt.describeOutput,
+				describePermSetError:   tt.describeError,
+			}
+
+			permSets, err := AllPermissionSets(context.Background(), mockClient, tt.instanceArn)
+
+			if tt.expectedError {
+				if err == nil {
+					t.Errorf("Expected error but got nil")
+					return
+				}
+				if tt.expectedErrMsg != "" && !strings.Contains(err.Error(), tt.expectedErrMsg) {
+					t.Errorf("Expected error containing %q, got %q", tt.expectedErrMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+					return
+				}
+				if len(permSets) != tt.expectedPermSets {
+					t.Errorf("Expected %d permission sets, got %d", tt.expectedPermSets, len(permSets))
+				}
+			}
+		})
+	}
 }
 
 func TestPermissionSetsErrorHandling(t *testing.T) {

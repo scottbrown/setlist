@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,6 +61,46 @@ func validateRequiredFlags(cmd *cobra.Command) error {
 	return nil
 }
 
+func validateRegionOnly() error {
+	if ssoRegion == "" {
+		return fmt.Errorf("required flag --%s not set", FlagSSORegion)
+	}
+
+	if !strings.HasPrefix(ssoRegion, "us-") &&
+		!strings.HasPrefix(ssoRegion, "eu-") &&
+		!strings.HasPrefix(ssoRegion, "ap-") &&
+		!strings.HasPrefix(ssoRegion, "sa-") &&
+		!strings.HasPrefix(ssoRegion, "ca-") &&
+		!strings.HasPrefix(ssoRegion, "me-") &&
+		!strings.HasPrefix(ssoRegion, "af-") {
+		return fmt.Errorf("invalid region format: %s", ssoRegion)
+	}
+
+	return nil
+}
+
+func configureLogging() error {
+	level := slog.LevelWarn
+	if verbose {
+		level = slog.LevelInfo
+	}
+
+	opts := &slog.HandlerOptions{Level: level}
+
+	var handler slog.Handler
+	switch logFormat {
+	case "plain":
+		handler = slog.NewTextHandler(os.Stderr, opts)
+	case "json":
+		handler = slog.NewJSONHandler(os.Stderr, opts)
+	default:
+		return fmt.Errorf("invalid log format %q: must be \"plain\" or \"json\"", logFormat)
+	}
+
+	slog.SetDefault(slog.New(handler))
+	return nil
+}
+
 // init initializes command-line flags for the root command.
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&ssoSession, FlagSSOSession, "s", "", "Nickname to give the SSO Session (e.g. org name) (required)")
@@ -72,14 +113,25 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&ssoFriendlyName, FlagSSOFriendlyName, "", "Use this instead of the identity store ID for the start URL")
 	rootCmd.PersistentFlags().BoolVar(&checkUpdate, FlagCheckUpdate, false, "Check if a newer version of the tool is available")
 	rootCmd.PersistentFlags().BoolVar(&listAccounts, FlagListAccounts, false, "List all available AWS accounts")
+	rootCmd.PersistentFlags().BoolVar(&listPermissionSets, FlagListPermissionSets, false, "List all available permission sets in the SSO instance")
 	rootCmd.PersistentFlags().StringVar(&includeAccounts, FlagIncludeAccounts, "", "Comma-delimited list of account IDs to include (mutually exclusive with --exclude-accounts)")
 	rootCmd.PersistentFlags().StringVar(&excludeAccounts, FlagExcludeAccounts, "", "Comma-delimited list of account IDs to exclude (mutually exclusive with --include-accounts)")
 	rootCmd.PersistentFlags().StringVar(&includePermissionSets, FlagIncludePermissionSets, "", "Comma-delimited list of permission set names to include (mutually exclusive with --exclude-permission-sets)")
 	rootCmd.PersistentFlags().StringVar(&excludePermissionSets, FlagExcludePermissionSets, "", "Comma-delimited list of permission set names to exclude (mutually exclusive with --include-permission-sets)")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, FlagVerbose, "v", false, "Enable verbose logging output")
+	rootCmd.PersistentFlags().StringVar(&logFormat, FlagLogFormat, "plain", "Log output format: \"plain\" or \"json\"")
 
 	rootCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		if permissions || checkUpdate || listAccounts {
+		if err := configureLogging(); err != nil {
+			return err
+		}
+
+		if permissions || checkUpdate {
 			return nil
+		}
+
+		if listAccounts || listPermissionSets {
+			return validateRegionOnly()
 		}
 
 		return validateRequiredFlags(cmd)

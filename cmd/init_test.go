@@ -118,3 +118,141 @@ func TestValidateRequiredFlags(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateRegionOnly(t *testing.T) {
+	tests := []struct {
+		name        string
+		ssoRegion   string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:      "valid region",
+			ssoRegion: "us-east-1",
+			wantErr:   false,
+		},
+		{
+			name:        "empty region",
+			ssoRegion:   "",
+			wantErr:     true,
+			errContains: "required flag --sso-region not set",
+		},
+		{
+			name:        "invalid region format",
+			ssoRegion:   "invalid-region",
+			wantErr:     true,
+			errContains: "invalid region format",
+		},
+		{
+			name:      "ca region",
+			ssoRegion: "ca-central-1",
+			wantErr:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ssoRegion = tt.ssoRegion
+
+			err := validateRegionOnly()
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateRegionOnly() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr && err != nil {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("validateRegionOnly() error = %v, should contain %v", err, tt.errContains)
+				}
+			}
+		})
+	}
+}
+
+func TestConfigureLogging(t *testing.T) {
+	tests := []struct {
+		name      string
+		verbose   bool
+		logFormat string
+		wantErr   bool
+	}{
+		{
+			name:      "plain format default",
+			verbose:   false,
+			logFormat: "plain",
+			wantErr:   false,
+		},
+		{
+			name:      "json format",
+			verbose:   false,
+			logFormat: "json",
+			wantErr:   false,
+		},
+		{
+			name:      "plain format verbose",
+			verbose:   true,
+			logFormat: "plain",
+			wantErr:   false,
+		},
+		{
+			name:      "json format verbose",
+			verbose:   true,
+			logFormat: "json",
+			wantErr:   false,
+		},
+		{
+			name:      "invalid format",
+			verbose:   false,
+			logFormat: "xml",
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			origVerbose := verbose
+			origLogFormat := logFormat
+			defer func() {
+				verbose = origVerbose
+				logFormat = origLogFormat
+			}()
+
+			verbose = tt.verbose
+			logFormat = tt.logFormat
+
+			err := configureLogging()
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("configureLogging() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestVerboseFlagRegistered(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup(FlagVerbose)
+	if flag == nil {
+		t.Errorf("Expected --%s flag to be registered", FlagVerbose)
+	}
+	if flag.Shorthand != "v" {
+		t.Errorf("Expected --%s shorthand to be 'v', got %q", FlagVerbose, flag.Shorthand)
+	}
+}
+
+func TestLogFormatFlagRegistered(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup(FlagLogFormat)
+	if flag == nil {
+		t.Errorf("Expected --%s flag to be registered", FlagLogFormat)
+	}
+	if flag.DefValue != "plain" {
+		t.Errorf("Expected --%s default to be 'plain', got %q", FlagLogFormat, flag.DefValue)
+	}
+}
+
+func TestListPermissionSetsFlagRegistered(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup(FlagListPermissionSets)
+	if flag == nil {
+		t.Errorf("Expected --%s flag to be registered", FlagListPermissionSets)
+	}
+}

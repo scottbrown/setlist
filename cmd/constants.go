@@ -32,6 +32,9 @@ const (
 	FlagExcludeAccounts       string = "exclude-accounts"
 	FlagIncludePermissionSets string = "include-permission-sets"
 	FlagExcludePermissionSets string = "exclude-permission-sets"
+	FlagListPermissionSets    string = "list-permission-sets"
+	FlagVerbose               string = "verbose"
+	FlagLogFormat             string = "log-format"
 )
 
 // Default output filename if no filename is specified

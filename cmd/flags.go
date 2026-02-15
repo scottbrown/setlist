@@ -11,8 +11,11 @@ var (
 	permissions           bool   // Flag to print the permissions needed and exit
 	checkUpdate           bool   // Flag to check if an update is available
 	listAccounts          bool   // Only list AWS accounts found
+	listPermissionSets    bool   // Only list permission sets found
 	includeAccounts       string // Comma-delimited list of account IDs to include
 	excludeAccounts       string // Comma-delimited list of account IDs to exclude
 	includePermissionSets string // Comma-delimited list of permission set names to include
 	excludePermissionSets string // Comma-delimited list of permission set names to exclude
+	verbose               bool   // Flag to enable verbose logging
+	logFormat             string // Log format: "plain" or "json"
 )
