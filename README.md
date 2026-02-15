@@ -127,6 +127,41 @@ setlist --sso-session myorg --sso-region us-east-1 --verbose --log-format json -
 setlist --list-permission-sets --sso-region us-east-1
 ```
 
+## Configuration File
+
+Setlist supports a YAML configuration file as an alternative to specifying flags on every invocation. By default, it looks for `~/.setlist.yaml`. You can specify a custom path with `--config`.
+
+**Precedence:** Command-line flags override config file values. Config file values override flag defaults.
+
+### Example `~/.setlist.yaml`
+
+```yaml
+sso-session: myorg
+sso-region: us-east-1
+profile: admin
+mapping: "123456789012=prod,210987654321=staging"
+output: ~/.aws/config
+stdout: false
+sso-friendly-name: my-company
+verbose: true
+log-format: plain
+```
+
+All keys are optional — only specify the ones you want as defaults. Keys match flag names exactly (hyphenated).
+
+### Usage with Config File
+
+```bash
+# Uses values from ~/.setlist.yaml
+setlist --stdout
+
+# Override a config file value with a flag
+setlist --sso-session other-org --stdout
+
+# Use a custom config file path
+setlist --config /path/to/config.yaml --stdout
+```
+
 ## Configuration Options
 
 |Flag|Short|Description|Required|
@@ -146,6 +181,7 @@ setlist --list-permission-sets --sso-region us-east-1
 |--exclude-accounts||Comma-delimited list of account IDs to exclude|No|
 |--include-permission-sets||Comma-delimited list of permission set names to include|No|
 |--exclude-permission-sets||Comma-delimited list of permission set names to exclude|No|
+|--config|-c|Path to config file (default: ~/.setlist.yaml)|No|
 |--check-update||Check if a newer version of the tool is available|No|
 |--permissions||Print the required AWS permissions and exit|No|
 
