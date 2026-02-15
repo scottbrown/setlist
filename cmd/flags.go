@@ -18,4 +18,5 @@ var (
 	excludePermissionSets string // Comma-delimited list of permission set names to exclude
 	verbose               bool   // Flag to enable verbose logging
 	logFormat             string // Log format: "plain" or "json"
+	configFile            string // Path to YAML config file
 )

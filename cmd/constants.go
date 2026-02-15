@@ -35,6 +35,7 @@ const (
 	FlagListPermissionSets    string = "list-permission-sets"
 	FlagVerbose               string = "verbose"
 	FlagLogFormat             string = "log-format"
+	FlagConfig                string = "config"
 )
 
 // Default output filename if no filename is specified

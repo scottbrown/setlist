@@ -120,8 +120,17 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&excludePermissionSets, FlagExcludePermissionSets, "", "Comma-delimited list of permission set names to exclude (mutually exclusive with --include-permission-sets)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, FlagVerbose, "v", false, "Enable verbose logging output")
 	rootCmd.PersistentFlags().StringVar(&logFormat, FlagLogFormat, "plain", "Log output format: \"plain\" or \"json\"")
+	rootCmd.PersistentFlags().StringVarP(&configFile, FlagConfig, "c", "", "Path to config file (default: ~/.setlist.yaml)")
 
 	rootCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		if err := configureLogging(); err != nil {
+			return err
+		}
+
+		if err := loadConfigFile(cmd); err != nil {
+			return err
+		}
+
 		if err := configureLogging(); err != nil {
 			return err
 		}
