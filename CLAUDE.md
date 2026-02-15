@@ -43,7 +43,15 @@ task sbom                     # Generate software bill of materials
 
 **CLI Layer (`/cmd/`):**
 - `main.go` - Application entry point
-- `rootCmd.go` - Main CLI logic and command handling
+- `rootCmd.go` - Root Cobra command and shared helpers (loadAWSConfig, outputConfig)
+- `setup.go` - Flag registration, PersistentPreRunE (logging + config loading), validation helpers
+- `generate.go` - `generate` subcommand (config file generation)
+- `accounts.go` - `accounts` subcommand (list AWS accounts)
+- `permission_sets.go` - `permission-sets` subcommand (list permission sets)
+- `permissions.go` - `permissions` subcommand (list required AWS permissions)
+- `check_update.go` - `check-update` subcommand (version update check)
+- `handle_init.go` - `init` subcommand (generate blank config file)
+- `config.go` - YAML configuration file loading and management
 - `constants.go`, `flags.go` - CLI configuration
 
 **Core Business Logic:**

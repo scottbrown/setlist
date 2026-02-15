@@ -7,15 +7,33 @@ import (
 	"time"
 
 	"github.com/scottbrown/setlist"
+
+	"github.com/spf13/cobra"
 )
 
-// handleCheckUpdate checks for updates and displays the results
+var checkUpdateCmd = &cobra.Command{
+	Use:   "check-update",
+	Short: "Checking if a newer version is available",
+	Long:  "Checking GitHub for a newer release of this tool",
+	RunE:  handleCheckUpdateCommand,
+}
+
+func init() {
+	rootCmd.AddCommand(checkUpdateCmd)
+}
+
+func handleCheckUpdateCommand(cmd *cobra.Command, args []string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), DEFAULT_TIMEOUT)
+	defer cancel()
+
+	return handleCheckUpdate(ctx)
+}
+
 func handleCheckUpdate(ctx context.Context) error {
 	client := &http.Client{Timeout: 5 * time.Second}
 	return checkForUpdate(ctx, client)
 }
 
-// checkForUpdate performs the update check using the provided HTTP client
 func checkForUpdate(ctx context.Context, client setlist.HTTPDoer) error {
 	info, err := setlist.CheckForUpdates(ctx, client)
 	if err != nil {

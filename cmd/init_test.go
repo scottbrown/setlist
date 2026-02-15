@@ -250,9 +250,3 @@ func TestLogFormatFlagRegistered(t *testing.T) {
 	}
 }
 
-func TestListPermissionSetsFlagRegistered(t *testing.T) {
-	flag := rootCmd.PersistentFlags().Lookup(FlagListPermissionSets)
-	if flag == nil {
-		t.Errorf("Expected --%s flag to be registered", FlagListPermissionSets)
-	}
-}

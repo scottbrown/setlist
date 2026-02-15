@@ -14,13 +14,26 @@
 //
 // Usage:
 //
-//	setlist [flags]
+//	setlist <command> [flags]
+//
+// Commands:
+//
+//	generate          Generate an AWS config file from SSO configuration
+//	accounts          List all available AWS accounts
+//	permission-sets   List all available permission sets
+//	permissions       List required AWS permissions
+//	check-update      Check if a newer version is available
+//	init              Generate a blank configuration file
 //
 // Example:
 //
-//	setlist --sso-session my-session --sso-region us-east-1 --output ~/.aws/config
+//	setlist generate --sso-session my-session --sso-region us-east-1 --output ~/.aws/config
+//	setlist accounts --sso-region us-east-1
+//	setlist permission-sets --sso-region us-east-1
+//	setlist permissions
+//	setlist check-update
 //
-// Required Flags:
+// Required Flags (for generate):
 //
 //	--sso-session    The AWS SSO session name (e.g., organization name)
 //	--sso-region     The AWS region where AWS SSO is hosted

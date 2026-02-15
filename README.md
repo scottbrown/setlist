@@ -65,28 +65,28 @@ This tool requires some readonly permissions from your AWS organization account.
 You can view these in the application by running:
 
 ```bash
-setlist --permissions
+setlist permissions
 ```
 
 ### Basic Usage
 
 ```bash
 # Generate AWS config using the organization's SSO instance
-setlist --sso-session myorg --sso-region us-east-1 --output ~/.aws/config
+setlist generate --sso-session myorg --sso-region us-east-1 --output ~/.aws/config
 ```
 
 ### Using an AWS Profile
 
 ```bash
 # Use an existing AWS profile to authenticate
-setlist --sso-session myorg --sso-region us-east-1 --profile admin --output ~/.aws/config
+setlist generate --sso-session myorg --sso-region us-east-1 --profile admin --output ~/.aws/config
 ```
 
 ### Using Account Nicknames
 
 ```bash
 # Map account IDs to friendly names
-setlist --sso-session myorg --sso-region us-east-1 \
+setlist generate --sso-session myorg --sso-region us-east-1 \
   --mapping "123456789012=prod,210987654321=staging" \
   --output ~/.aws/config
 ```
@@ -95,14 +95,14 @@ setlist --sso-session myorg --sso-region us-east-1 \
 
 ```bash
 # Output to stdout instead of a file
-setlist --sso-session myorg --sso-region us-east-1 --stdout
+setlist generate --sso-session myorg --sso-region us-east-1 --stdout
 ```
 
 ### Using a Friendly Name for SSO URL
 
 ```bash
 # Use a friendly name instead of the identity store ID
-setlist --sso-session myorg \
+setlist generate --sso-session myorg \
   --sso-region us-east-1 \
   --sso-friendly-name my-company \
   --output ~/.aws/config
@@ -114,17 +114,31 @@ By supplying a `--mapping` flag with a comma-delimited list of key=value pairs c
 
 ```bash
 # Enable verbose output to see what setlist is doing
-setlist --sso-session myorg --sso-region us-east-1 --verbose --stdout
+setlist generate --sso-session myorg --sso-region us-east-1 --verbose --stdout
 
 # Use JSON log format for structured logging
-setlist --sso-session myorg --sso-region us-east-1 --verbose --log-format json --stdout
+setlist generate --sso-session myorg --sso-region us-east-1 --verbose --log-format json --stdout
+```
+
+### Listing Accounts
+
+```bash
+# List all AWS accounts in the organization
+setlist accounts --sso-region us-east-1
 ```
 
 ### Listing Permission Sets
 
 ```bash
 # List all permission sets available in the SSO instance
-setlist --list-permission-sets --sso-region us-east-1
+setlist permission-sets --sso-region us-east-1
+```
+
+### Checking for Updates
+
+```bash
+# Check if a newer version is available
+setlist check-update
 ```
 
 ## Configuration File
@@ -153,37 +167,62 @@ All keys are optional — only specify the ones you want as defaults. Keys match
 
 ```bash
 # Uses values from ~/.setlist.yaml
-setlist --stdout
+setlist generate --stdout
 
 # Override a config file value with a flag
-setlist --sso-session other-org --stdout
+setlist generate --sso-session other-org --stdout
 
 # Use a custom config file path
-setlist --config /path/to/config.yaml --stdout
+setlist generate --config /path/to/config.yaml --stdout
 ```
 
-## Configuration Options
+## Commands
+
+|Command|Description|
+|-|-|
+|generate|Generate an AWS config file from SSO configuration|
+|accounts|List all available AWS accounts|
+|permission-sets|List all available permission sets in the SSO instance|
+|permissions|List required AWS permissions|
+|check-update|Check if a newer version of the tool is available|
+|init|Generate a blank configuration file|
+
+## Global Flags
+
+These flags are available on all commands.
 
 |Flag|Short|Description|Required|
 |-|-|-|-|
-|--sso-session|-s|Nickname for the SSO session (e.g., organization name)|Yes|
-|--sso-region|-r|AWS region where AWS SSO resides|Yes|
+|--sso-session|-s|Nickname for the SSO session (e.g., organization name)|Varies|
+|--sso-region|-r|AWS region where AWS SSO resides|Varies|
 |--profile|-p|AWS profile to use for authentication|No|
+|--verbose|-v|Enable verbose logging output|No|
+|--log-format||Log output format: "plain" (default) or "json"|No|
+|--config|-c|Path to config file (default: ~/.setlist.yaml)|No|
+
+## Generate Flags
+
+These flags are only available on the `generate` command.
+
+|Flag|Short|Description|Required|
+|-|-|-|-|
 |--mapping|-m|Comma-delimited account nickname mapping (format: id=nickname)|No|
 |--output|-o|Output file path (default: ./aws.config)|No|
 |--stdout||Write config to stdout instead of a file|No|
 |--sso-friendly-name||Alternative name for the SSO start URL|No|
-|--list-accounts||List all available AWS accounts|No|
-|--list-permission-sets||List all available permission sets in the SSO instance|No|
-|--verbose|-v|Enable verbose logging output|No|
-|--log-format||Log output format: "plain" (default) or "json"|No|
 |--include-accounts||Comma-delimited list of account IDs to include|No|
 |--exclude-accounts||Comma-delimited list of account IDs to exclude|No|
 |--include-permission-sets||Comma-delimited list of permission set names to include|No|
 |--exclude-permission-sets||Comma-delimited list of permission set names to exclude|No|
-|--config|-c|Path to config file (default: ~/.setlist.yaml)|No|
-|--check-update||Check if a newer version of the tool is available|No|
-|--permissions||Print the required AWS permissions and exit|No|
+
+## Accounts Flags
+
+These flags are only available on the `accounts` command.
+
+|Flag|Description|
+|-|-|
+|--include-accounts|Comma-delimited list of account IDs to include|
+|--exclude-accounts|Comma-delimited list of account IDs to exclude|
 
 ## Library Usage
 
