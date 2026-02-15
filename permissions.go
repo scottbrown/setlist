@@ -7,6 +7,7 @@ func ListPermissionsRequired() []string {
 	return []string{
 		"organizations:ListAccounts",
 		"sso:ListInstances",
+		"sso:ListPermissionSets",
 		"sso:ListPermissionSetsProvisionedToAccount",
 		"sso:DescribePermissionSet",
 	}

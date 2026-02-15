@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SetList Lambda - Generates AWS config files on a schedule and uploads to S3
+
+Parameters:
+  SSOSession:
+    Type: String
+    Description: Nickname for the SSO session (e.g. organization name)
+  SSORegion:
+    Type: String
+    Description: AWS region where AWS SSO resides
+  S3Bucket:
+    Type: String
+    Description: S3 bucket to upload the generated config file to
+  S3Key:
+    Type: String
+    Default: aws.config
+    Description: S3 object key for the generated config file
+  SSOFriendlyName:
+    Type: String
+    Default: ''
+    Description: Optional friendly name for the SSO start URL
+  NicknameMapping:
+    Type: String
+    Default: ''
+    Description: Optional comma-delimited account nickname mapping (id=nickname)
+  IncludeAccounts:
+    Type: String
+    Default: ''
+    Description: Optional comma-delimited list of account IDs to include
+  ExcludeAccounts:
+    Type: String
+    Default: ''
+    Description: Optional comma-delimited list of account IDs to exclude
+  IncludePermissionSets:
+    Type: String
+    Default: ''
+    Description: Optional comma-delimited list of permission set names to include
+  ExcludePermissionSets:
+    Type: String
+    Default: ''
+    Description: Optional comma-delimited list of permission set names to exclude
+  ScheduleExpression:
+    Type: String
+    Default: 'rate(1 day)'
+    Description: EventBridge schedule expression for how often to regenerate the config
+
+Resources:
+  SetListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      CodeUri: .build/lambda/
+      MemorySize: 128
+      Timeout: 300
+      Environment:
+        Variables:
+          SSO_SESSION: !Ref SSOSession
+          SSO_REGION: !Ref SSORegion
+          S3_BUCKET: !Ref S3Bucket
+          S3_KEY: !Ref S3Key
+          SSO_FRIENDLY_NAME: !Ref SSOFriendlyName
+          NICKNAME_MAPPING: !Ref NicknameMapping
+          INCLUDE_ACCOUNTS: !Ref IncludeAccounts
+          EXCLUDE_ACCOUNTS: !Ref ExcludeAccounts
+          INCLUDE_PERMISSION_SETS: !Ref IncludePermissionSets
+          EXCLUDE_PERMISSION_SETS: !Ref ExcludePermissionSets
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - organizations:ListAccounts
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - sso:ListInstances
+                - sso:ListPermissionSets
+                - sso:ListPermissionSetsProvisionedToAccount
+                - sso:DescribePermissionSet
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Sub 'arn:aws:s3:::${S3Bucket}/${S3Key}'
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref ScheduleExpression
+            Description: Trigger SetList config generation on a schedule
+            Enabled: true
+
+Outputs:
+  SetListFunctionArn:
+    Description: ARN of the SetList Lambda function
+    Value: !GetAtt SetListFunction.Arn

@@ -16,6 +16,7 @@ import (
 	"github.com/scottbrown/setlist"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/organizations"
 	orgtypes "github.com/aws/aws-sdk-go-v2/service/organizations/types"
 	"github.com/aws/aws-sdk-go-v2/service/ssoadmin"
 	ssotypes "github.com/aws/aws-sdk-go-v2/service/ssoadmin/types"
@@ -31,6 +32,7 @@ func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) {
 
 type mockSSOAdminClient struct {
 	ListInstancesFunc                          func(ctx context.Context, params *ssoadmin.ListInstancesInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListInstancesOutput, error)
+	ListPermissionSetsFunc                     func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error)
 	ListPermissionSetsProvisionedToAccountFunc func(ctx context.Context, params *ssoadmin.ListPermissionSetsProvisionedToAccountInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsProvisionedToAccountOutput, error)
 	DescribePermissionSetFunc                  func(ctx context.Context, params *ssoadmin.DescribePermissionSetInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.DescribePermissionSetOutput, error)
 }
@@ -38,6 +40,13 @@ type mockSSOAdminClient struct {
 func (m *mockSSOAdminClient) ListInstances(ctx context.Context, params *ssoadmin.ListInstancesInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListInstancesOutput, error) {
 	if m.ListInstancesFunc != nil {
 		return m.ListInstancesFunc(ctx, params, optFns...)
+	}
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockSSOAdminClient) ListPermissionSets(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+	if m.ListPermissionSetsFunc != nil {
+		return m.ListPermissionSetsFunc(ctx, params, optFns...)
 	}
 	return nil, errors.New("not implemented")
 }
@@ -54,180 +63,6 @@ func (m *mockSSOAdminClient) DescribePermissionSet(ctx context.Context, params *
 		return m.DescribePermissionSetFunc(ctx, params, optFns...)
 	}
 	return nil, errors.New("not implemented")
-}
-
-func TestBuildAccountProfiles(t *testing.T) {
-	origSession := ssoSession
-	defer func() { ssoSession = origSession }()
-
-	tests := []struct {
-		name           string
-		ssoSessionVal  string
-		account        orgtypes.Account
-		permissionSets []ssotypes.PermissionSet
-		expectedCount  int
-	}{
-		{
-			name:          "valid account with complete permission sets",
-			ssoSessionVal: "test-session",
-			account:       orgtypes.Account{Id: aws.String("123456789012"), Name: aws.String("Test Account")},
-			permissionSets: []ssotypes.PermissionSet{
-				{
-					Name:            aws.String("AdminAccess"),
-					Description:     aws.String("Full admin access"),
-					SessionDuration: aws.String("PT1H"),
-				},
-				{
-					Name:            aws.String("ReadOnly"),
-					Description:     aws.String("Read only access"),
-					SessionDuration: aws.String("PT2H"),
-				},
-			},
-			expectedCount: 2,
-		},
-		{
-			name:          "permission set with nil Name is skipped",
-			ssoSessionVal: "test-session",
-			account:       orgtypes.Account{Id: aws.String("123456789012"), Name: aws.String("Test Account")},
-			permissionSets: []ssotypes.PermissionSet{
-				{
-					Name:            nil,
-					Description:     aws.String("Some description"),
-					SessionDuration: aws.String("PT1H"),
-				},
-			},
-			expectedCount: 0,
-		},
-		{
-			name:          "permission set with nil Description is skipped",
-			ssoSessionVal: "test-session",
-			account:       orgtypes.Account{Id: aws.String("123456789012"), Name: aws.String("Test Account")},
-			permissionSets: []ssotypes.PermissionSet{
-				{
-					Name:            aws.String("AdminAccess"),
-					Description:     nil,
-					SessionDuration: aws.String("PT1H"),
-				},
-			},
-			expectedCount: 0,
-		},
-		{
-			name:          "permission set with nil SessionDuration is skipped",
-			ssoSessionVal: "test-session",
-			account:       orgtypes.Account{Id: aws.String("123456789012"), Name: aws.String("Test Account")},
-			permissionSets: []ssotypes.PermissionSet{
-				{
-					Name:            aws.String("AdminAccess"),
-					Description:     aws.String("Full admin access"),
-					SessionDuration: nil,
-				},
-			},
-			expectedCount: 0,
-		},
-		{
-			name:           "empty permission sets list",
-			ssoSessionVal:  "test-session",
-			account:        orgtypes.Account{Id: aws.String("123456789012"), Name: aws.String("Test Account")},
-			permissionSets: []ssotypes.PermissionSet{},
-			expectedCount:  0,
-		},
-		{
-			name:          "mix of valid and incomplete permission sets",
-			ssoSessionVal: "test-session",
-			account:       orgtypes.Account{Id: aws.String("123456789012"), Name: aws.String("Test Account")},
-			permissionSets: []ssotypes.PermissionSet{
-				{
-					Name:            aws.String("ValidSet"),
-					Description:     aws.String("Valid"),
-					SessionDuration: aws.String("PT1H"),
-				},
-				{
-					Name:            nil,
-					Description:     aws.String("Missing name"),
-					SessionDuration: aws.String("PT1H"),
-				},
-			},
-			expectedCount: 1,
-		},
-		{
-			name:          "empty description string triggers error path",
-			ssoSessionVal: "test-session",
-			account:       orgtypes.Account{Id: aws.String("123456789012"), Name: aws.String("Test Account")},
-			permissionSets: []ssotypes.PermissionSet{
-				{
-					Name:            aws.String("AdminAccess"),
-					Description:     aws.String(""),
-					SessionDuration: aws.String("PT1H"),
-				},
-			},
-			expectedCount: 0,
-		},
-		{
-			name:          "empty session duration string triggers error path",
-			ssoSessionVal: "test-session",
-			account:       orgtypes.Account{Id: aws.String("123456789012"), Name: aws.String("Test Account")},
-			permissionSets: []ssotypes.PermissionSet{
-				{
-					Name:            aws.String("AdminAccess"),
-					Description:     aws.String("Valid desc"),
-					SessionDuration: aws.String(""),
-				},
-			},
-			expectedCount: 0,
-		},
-		{
-			name:          "empty ssoSession triggers session name error path",
-			ssoSessionVal: "",
-			account:       orgtypes.Account{Id: aws.String("123456789012"), Name: aws.String("Test Account")},
-			permissionSets: []ssotypes.PermissionSet{
-				{
-					Name:            aws.String("AdminAccess"),
-					Description:     aws.String("Valid desc"),
-					SessionDuration: aws.String("PT1H"),
-				},
-			},
-			expectedCount: 0,
-		},
-		{
-			name:          "invalid account ID length triggers error path",
-			ssoSessionVal: "test-session",
-			account:       orgtypes.Account{Id: aws.String("short"), Name: aws.String("Test Account")},
-			permissionSets: []ssotypes.PermissionSet{
-				{
-					Name:            aws.String("AdminAccess"),
-					Description:     aws.String("Valid desc"),
-					SessionDuration: aws.String("PT1H"),
-				},
-			},
-			expectedCount: 0,
-		},
-		{
-			name:          "empty role name triggers error path",
-			ssoSessionVal: "test-session",
-			account:       orgtypes.Account{Id: aws.String("123456789012"), Name: aws.String("Test Account")},
-			permissionSets: []ssotypes.PermissionSet{
-				{
-					Name:            aws.String(""),
-					Description:     aws.String("Valid desc"),
-					SessionDuration: aws.String("PT1H"),
-				},
-			},
-			expectedCount: 0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ssoSession = tt.ssoSessionVal
-			profiles, err := buildAccountProfiles(tt.account, tt.permissionSets)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-			if len(profiles) != tt.expectedCount {
-				t.Errorf("Expected %d profiles, got %d", tt.expectedCount, len(profiles))
-			}
-		})
-	}
 }
 
 func TestDisplayAccounts(t *testing.T) {
@@ -255,7 +90,6 @@ func TestDisplayAccounts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Capture stdout
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
@@ -282,7 +116,6 @@ func TestDisplayAccounts(t *testing.T) {
 }
 
 func TestOutputConfigStdout(t *testing.T) {
-	// Save and restore globals
 	origStdout := stdout
 	defer func() { stdout = origStdout }()
 	stdout = true
@@ -294,7 +127,6 @@ func TestOutputConfigStdout(t *testing.T) {
 		Profiles:        []setlist.Profile{},
 	}
 
-	// Capture stdout
 	oldOut := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
@@ -355,7 +187,6 @@ func TestOutputConfigInvalidConfig(t *testing.T) {
 	defer func() { stdout = origStdout }()
 	stdout = true
 
-	// Missing required fields
 	configFile := setlist.ConfigFile{}
 
 	err := outputConfig(configFile)
@@ -365,7 +196,6 @@ func TestOutputConfigInvalidConfig(t *testing.T) {
 }
 
 func TestHandleListPermissions(t *testing.T) {
-	// Capture stdout
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
@@ -385,6 +215,7 @@ func TestHandleListPermissions(t *testing.T) {
 	expected := []string{
 		"organizations:ListAccounts",
 		"sso:ListInstances",
+		"sso:ListPermissionSets",
 		"sso:ListPermissionSetsProvisionedToAccount",
 		"sso:DescribePermissionSet",
 	}
@@ -393,104 +224,6 @@ func TestHandleListPermissions(t *testing.T) {
 		if !strings.Contains(output, perm) {
 			t.Errorf("Expected output to contain %q, got: %s", perm, output)
 		}
-	}
-}
-
-func TestBuildConfigFile(t *testing.T) {
-	origSession := ssoSession
-	origRegion := ssoRegion
-	origFriendlyName := ssoFriendlyName
-	defer func() {
-		ssoSession = origSession
-		ssoRegion = origRegion
-		ssoFriendlyName = origFriendlyName
-	}()
-
-	tests := []struct {
-		name        string
-		ssoSession  string
-		ssoRegion   string
-		instance    ssotypes.InstanceMetadata
-		accounts    []orgtypes.Account
-		nicknames   map[string]string
-		client      *mockSSOAdminClient
-		expectError bool
-	}{
-		{
-			name:       "valid config with one account and permission set",
-			ssoSession: "my-session",
-			ssoRegion:  "us-east-1",
-			instance: ssotypes.InstanceMetadata{
-				InstanceArn:     aws.String("arn:aws:sso:::instance/ssoins-12345678"),
-				IdentityStoreId: aws.String("d-1234567890"),
-			},
-			accounts: []orgtypes.Account{
-				{Id: aws.String("123456789012"), Name: aws.String("TestAccount")},
-			},
-			nicknames: map[string]string{},
-			client: &mockSSOAdminClient{
-				ListPermissionSetsProvisionedToAccountFunc: func(ctx context.Context, params *ssoadmin.ListPermissionSetsProvisionedToAccountInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsProvisionedToAccountOutput, error) {
-					return &ssoadmin.ListPermissionSetsProvisionedToAccountOutput{
-						PermissionSets: []string{"arn:aws:sso:::permissionSet/ps-12345678"},
-					}, nil
-				},
-				DescribePermissionSetFunc: func(ctx context.Context, params *ssoadmin.DescribePermissionSetInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.DescribePermissionSetOutput, error) {
-					return &ssoadmin.DescribePermissionSetOutput{
-						PermissionSet: &ssotypes.PermissionSet{
-							Name:            aws.String("AdminRole"),
-							Description:     aws.String("Admin access"),
-							SessionDuration: aws.String("PT1H"),
-						},
-					}, nil
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:       "invalid identity store ID",
-			ssoSession: "my-session",
-			ssoRegion:  "us-east-1",
-			instance: ssotypes.InstanceMetadata{
-				InstanceArn:     aws.String("arn:aws:sso:::instance/ssoins-12345678"),
-				IdentityStoreId: aws.String("invalid"),
-			},
-			accounts:    []orgtypes.Account{},
-			nicknames:   map[string]string{},
-			client:      &mockSSOAdminClient{},
-			expectError: true,
-		},
-		{
-			name:       "empty region",
-			ssoSession: "my-session",
-			ssoRegion:  "",
-			instance: ssotypes.InstanceMetadata{
-				InstanceArn:     aws.String("arn:aws:sso:::instance/ssoins-12345678"),
-				IdentityStoreId: aws.String("d-1234567890"),
-			},
-			accounts:    []orgtypes.Account{},
-			nicknames:   map[string]string{},
-			client:      &mockSSOAdminClient{},
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ssoSession = tt.ssoSession
-			ssoRegion = tt.ssoRegion
-			ssoFriendlyName = ""
-
-			configFile, err := buildConfigFile(context.Background(), tt.client, tt.instance, tt.accounts, tt.nicknames, nil, nil)
-
-			if (err != nil) != tt.expectError {
-				t.Errorf("buildConfigFile() error = %v, expectError %v", err, tt.expectError)
-				return
-			}
-
-			if !tt.expectError && configFile.SessionName != tt.ssoSession {
-				t.Errorf("Expected session name %q, got %q", tt.ssoSession, configFile.SessionName)
-			}
-		})
 	}
 }
 
@@ -508,17 +241,19 @@ func TestHandleRootPermissionsFlag(t *testing.T) {
 	origPermissions := permissions
 	origCheckUpdate := checkUpdate
 	origListAccounts := listAccounts
+	origListPermissionSets := listPermissionSets
 	defer func() {
 		permissions = origPermissions
 		checkUpdate = origCheckUpdate
 		listAccounts = origListAccounts
+		listPermissionSets = origListPermissionSets
 	}()
 
 	permissions = true
 	checkUpdate = false
 	listAccounts = false
+	listPermissionSets = false
 
-	// Capture stdout
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
@@ -604,7 +339,6 @@ func TestCheckForUpdate(t *testing.T) {
 				},
 			}
 
-			// Capture stdout
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
@@ -633,80 +367,199 @@ func TestCheckForUpdate(t *testing.T) {
 	}
 }
 
-func TestBuildProfiles(t *testing.T) {
-	origSession := ssoSession
-	defer func() { ssoSession = origSession }()
-	ssoSession = "test-session"
+type mockOrganizationsClient struct {
+	ListAccountsFunc func(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error)
+}
+
+func (m *mockOrganizationsClient) ListAccounts(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error) {
+	return m.ListAccountsFunc(ctx, params, optFns...)
+}
+
+func TestHandleListAccountsFlow(t *testing.T) {
+	origIncludeAccounts := includeAccounts
+	origExcludeAccounts := excludeAccounts
+	defer func() {
+		includeAccounts = origIncludeAccounts
+		excludeAccounts = origExcludeAccounts
+	}()
+	includeAccounts = ""
+	excludeAccounts = ""
 
 	tests := []struct {
-		name          string
-		accounts      []orgtypes.Account
-		client        *mockSSOAdminClient
-		expectedCount int
-		expectError   bool
+		name        string
+		client      *mockOrganizationsClient
+		expectError bool
+		expected    []string
 	}{
 		{
-			name: "multiple accounts with permission sets",
-			accounts: []orgtypes.Account{
-				{Id: aws.String("111111111111"), Name: aws.String("Account1")},
-				{Id: aws.String("222222222222"), Name: aws.String("Account2")},
+			name: "lists accounts successfully",
+			client: &mockOrganizationsClient{
+				ListAccountsFunc: func(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error) {
+					return &organizations.ListAccountsOutput{
+						Accounts: []orgtypes.Account{
+							{Id: aws.String("111111111111"), Name: aws.String("Dev")},
+							{Id: aws.String("222222222222"), Name: aws.String("Prod")},
+						},
+					}, nil
+				},
 			},
+			expectError: false,
+			expected:    []string{"111111111111", "Dev", "222222222222", "Prod"},
+		},
+		{
+			name: "API error",
+			client: &mockOrganizationsClient{
+				ListAccountsFunc: func(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error) {
+					return nil, errors.New("access denied")
+				},
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			err := handleListAccountsFlow(context.Background(), tt.client)
+			w.Close()
+			os.Stdout = oldStdout
+
+			if (err != nil) != tt.expectError {
+				t.Errorf("handleListAccountsFlow() error = %v, expectError %v", err, tt.expectError)
+				return
+			}
+
+			if !tt.expectError {
+				var buf bytes.Buffer
+				buf.ReadFrom(r)
+				output := buf.String()
+
+				for _, exp := range tt.expected {
+					if !strings.Contains(output, exp) {
+						t.Errorf("Expected output to contain %q, got: %s", exp, output)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestHandleListPermissionSetsFlow(t *testing.T) {
+	tests := []struct {
+		name        string
+		client      *mockSSOAdminClient
+		expectError bool
+		expected    []string
+	}{
+		{
+			name: "lists permission sets successfully",
 			client: &mockSSOAdminClient{
-				ListPermissionSetsProvisionedToAccountFunc: func(ctx context.Context, params *ssoadmin.ListPermissionSetsProvisionedToAccountInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsProvisionedToAccountOutput, error) {
-					return &ssoadmin.ListPermissionSetsProvisionedToAccountOutput{
+				ListInstancesFunc: func(ctx context.Context, params *ssoadmin.ListInstancesInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListInstancesOutput, error) {
+					return &ssoadmin.ListInstancesOutput{
+						Instances: []ssotypes.InstanceMetadata{
+							{
+								InstanceArn:     aws.String("arn:aws:sso:::instance/ssoins-12345678"),
+								IdentityStoreId: aws.String("d-1234567890"),
+							},
+						},
+					}, nil
+				},
+				ListPermissionSetsFunc: func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+					return &ssoadmin.ListPermissionSetsOutput{
 						PermissionSets: []string{"arn:aws:sso:::permissionSet/ps-123"},
 					}, nil
 				},
 				DescribePermissionSetFunc: func(ctx context.Context, params *ssoadmin.DescribePermissionSetInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.DescribePermissionSetOutput, error) {
 					return &ssoadmin.DescribePermissionSetOutput{
 						PermissionSet: &ssotypes.PermissionSet{
-							Name:            aws.String("TestRole"),
-							Description:     aws.String("Test role"),
-							SessionDuration: aws.String("PT1H"),
+							Name:        aws.String("ViewOnly"),
+							Description: aws.String("View only access"),
 						},
 					}, nil
 				},
 			},
-			expectedCount: 2,
-			expectError:   false,
+			expectError: false,
+			expected:    []string{"ViewOnly", "View only access"},
 		},
 		{
-			name: "account with nil ID is skipped",
-			accounts: []orgtypes.Account{
-				{Id: nil, Name: aws.String("No ID Account")},
-				{Id: aws.String("111111111111"), Name: aws.String("Valid Account")},
-			},
+			name: "SSO instance error",
 			client: &mockSSOAdminClient{
-				ListPermissionSetsProvisionedToAccountFunc: func(ctx context.Context, params *ssoadmin.ListPermissionSetsProvisionedToAccountInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsProvisionedToAccountOutput, error) {
-					return &ssoadmin.ListPermissionSetsProvisionedToAccountOutput{
+				ListInstancesFunc: func(ctx context.Context, params *ssoadmin.ListInstancesInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListInstancesOutput, error) {
+					return nil, errors.New("SSO not configured")
+				},
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			err := handleListPermissionSetsFlow(context.Background(), tt.client)
+			w.Close()
+			os.Stdout = oldStdout
+
+			if (err != nil) != tt.expectError {
+				t.Errorf("handleListPermissionSetsFlow() error = %v, expectError %v", err, tt.expectError)
+				return
+			}
+
+			if !tt.expectError {
+				var buf bytes.Buffer
+				buf.ReadFrom(r)
+				output := buf.String()
+
+				for _, exp := range tt.expected {
+					if !strings.Contains(output, exp) {
+						t.Errorf("Expected output to contain %q, got: %s", exp, output)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestHandleListPermissionSets(t *testing.T) {
+	tests := []struct {
+		name        string
+		client      *mockSSOAdminClient
+		expectError bool
+		expected    []string
+	}{
+		{
+			name: "lists permission sets",
+			client: &mockSSOAdminClient{
+				ListPermissionSetsFunc: func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+					return &ssoadmin.ListPermissionSetsOutput{
 						PermissionSets: []string{"arn:aws:sso:::permissionSet/ps-123"},
 					}, nil
 				},
 				DescribePermissionSetFunc: func(ctx context.Context, params *ssoadmin.DescribePermissionSetInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.DescribePermissionSetOutput, error) {
 					return &ssoadmin.DescribePermissionSetOutput{
 						PermissionSet: &ssotypes.PermissionSet{
-							Name:            aws.String("TestRole"),
-							Description:     aws.String("Test role"),
-							SessionDuration: aws.String("PT1H"),
+							Name:        aws.String("AdminAccess"),
+							Description: aws.String("Full admin access"),
 						},
 					}, nil
 				},
 			},
-			expectedCount: 1,
-			expectError:   false,
+			expectError: false,
+			expected:    []string{"AdminAccess", "Full admin access"},
 		},
 		{
-			name: "permission sets API error",
-			accounts: []orgtypes.Account{
-				{Id: aws.String("111111111111"), Name: aws.String("Account1")},
-			},
+			name: "API error",
 			client: &mockSSOAdminClient{
-				ListPermissionSetsProvisionedToAccountFunc: func(ctx context.Context, params *ssoadmin.ListPermissionSetsProvisionedToAccountInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsProvisionedToAccountOutput, error) {
-					return nil, errors.New("API access denied")
+				ListPermissionSetsFunc: func(ctx context.Context, params *ssoadmin.ListPermissionSetsInput, optFns ...func(*ssoadmin.Options)) (*ssoadmin.ListPermissionSetsOutput, error) {
+					return nil, errors.New("access denied")
 				},
 			},
-			expectedCount: 0,
-			expectError:   true,
+			expectError: true,
 		},
 	}
 
@@ -717,15 +570,29 @@ func TestBuildProfiles(t *testing.T) {
 				IdentityStoreId: aws.String("d-1234567890"),
 			}
 
-			profiles, err := buildProfiles(context.Background(), tt.client, instance, tt.accounts, nil, nil)
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			err := handleListPermissionSets(context.Background(), tt.client, instance)
+			w.Close()
+			os.Stdout = oldStdout
 
 			if (err != nil) != tt.expectError {
-				t.Errorf("buildProfiles() error = %v, expectError %v", err, tt.expectError)
+				t.Errorf("handleListPermissionSets() error = %v, expectError %v", err, tt.expectError)
 				return
 			}
 
-			if !tt.expectError && len(profiles) != tt.expectedCount {
-				t.Errorf("Expected %d profiles, got %d", tt.expectedCount, len(profiles))
+			if !tt.expectError {
+				var buf bytes.Buffer
+				buf.ReadFrom(r)
+				output := buf.String()
+
+				for _, exp := range tt.expected {
+					if !strings.Contains(output, exp) {
+						t.Errorf("Expected output to contain %q, got: %s", exp, output)
+					}
+				}
 			}
 		})
 	}
