@@ -165,6 +165,94 @@ func TestFileBuilderBuildWithNicknameMapping(t *testing.T) {
 	}
 }
 
+func TestFileBuilderBuildWithDefaultNicknamePrefix(t *testing.T) {
+	config := ConfigFile{
+		SessionName:     "test-session",
+		IdentityStoreId: "d-1234567890",
+		Region:          "us-east-1",
+		Profiles: []Profile{
+			{
+				SessionName: "test-session",
+				AccountId:   "123456789012",
+				RoleName:    "AdminRole",
+				Description: "Admin access",
+			},
+		},
+		NicknameMapping: map[string]string{}, // no nicknames
+	}
+
+	builder := NewFileBuilder(config)
+	payload, err := builder.Build()
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	// Should have the account ID profile
+	accountSection := payload.Section("profile 123456789012-AdminRole")
+	if accountSection == nil {
+		t.Error("Expected account ID profile section")
+	}
+
+	// Should have the default nickname profile
+	defaultSection := payload.Section("profile NoNickname_123456789012-AdminRole")
+	if defaultSection == nil {
+		t.Error("Expected default nickname profile section")
+	}
+}
+
+func TestFileBuilderBuildMixedNicknames(t *testing.T) {
+	config := ConfigFile{
+		SessionName:     "test-session",
+		IdentityStoreId: "d-1234567890",
+		Region:          "us-east-1",
+		Profiles: []Profile{
+			{
+				SessionName: "test-session",
+				AccountId:   "123456789012",
+				RoleName:    "AdminRole",
+				Description: "Admin access",
+			},
+			{
+				SessionName: "test-session",
+				AccountId:   "987654321098",
+				RoleName:    "ReadOnly",
+				Description: "Read only",
+			},
+		},
+		NicknameMapping: map[string]string{
+			"123456789012": "prod",
+		},
+	}
+
+	builder := NewFileBuilder(config)
+	payload, err := builder.Build()
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	sections := payload.SectionStrings()
+
+	expected := []string{
+		"profile 123456789012-AdminRole",
+		"profile prod-AdminRole",
+		"profile 987654321098-ReadOnly",
+		"profile NoNickname_987654321098-ReadOnly",
+	}
+
+	for _, exp := range expected {
+		found := false
+		for _, s := range sections {
+			if s == exp {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected section %q not found in %v", exp, sections)
+		}
+	}
+}
+
 func TestFileBuilderBuildProfileMissingAccountId(t *testing.T) {
 	config := ConfigFile{
 		SessionName:     "test-session",
@@ -244,6 +332,7 @@ func TestFileBuilderBuildOutputContent(t *testing.T) {
 		"123456789012",
 		"ReadOnly",
 		"[profile 123456789012-ReadOnly]",
+		"[profile NoNickname_123456789012-ReadOnly]",
 	}
 
 	for _, check := range checks {

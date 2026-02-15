@@ -70,13 +70,15 @@ func (f *FileBuilder) Build() (*ini.File, error) {
 			return payload, err
 		}
 
-		// Check if the profile has an associated nickname
-		if !f.Config.HasNickname(p.AccountId.String()) {
-			continue
+		// Create section for nickname-based profile
+		var nickname string
+		if f.Config.HasNickname(p.AccountId.String()) {
+			nickname = f.Config.NicknameMapping[p.AccountId.String()]
+		} else {
+			nickname = fmt.Sprintf("%s_%s", DefaultNicknamePrefix, p.AccountId.String())
 		}
 
-		// Create section for AccountNickname-PermissionSet profile
-		name, err = NewProfileName(fmt.Sprintf("%s-%s", f.Config.NicknameMapping[p.AccountId.String()], p.RoleName.String()))
+		name, err = NewProfileName(fmt.Sprintf("%s-%s", nickname, p.RoleName.String()))
 		if err != nil {
 			return payload, err
 		}
