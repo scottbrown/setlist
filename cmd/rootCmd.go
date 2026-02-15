@@ -20,6 +20,10 @@ var rootCmd = &cobra.Command{
 	Version: setlist.VERSION,
 }
 
+func init() {
+	rootCmd.SetVersionTemplate(fmt.Sprintf("{{.Name}} version %s (%s)\n", setlist.VERSION, setlist.COMMIT))
+}
+
 func loadAWSConfig(ctx context.Context) (aws.Config, error) {
 	if profile != "" {
 		slog.Info("Loading AWS config with profile", "profile", profile)

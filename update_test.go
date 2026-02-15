@@ -198,6 +198,25 @@ func TestCheckForUpdatesHTTPError(t *testing.T) {
 	}
 }
 
+func TestCheckForUpdatesDevBuild(t *testing.T) {
+	originalVersion := VERSION
+	defer func() { VERSION = originalVersion }()
+
+	VERSION = "dev"
+
+	mockClient := &mockHTTPClient{}
+
+	_, err := CheckForUpdates(context.Background(), mockClient)
+	if err == nil {
+		t.Error("Expected error for dev build, got nil")
+	}
+
+	expected := "cannot check for updates: running a dev build"
+	if err.Error() != expected {
+		t.Errorf("Expected error %q, got %q", expected, err.Error())
+	}
+}
+
 func TestCheckForUpdatesWithContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

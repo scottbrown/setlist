@@ -31,6 +31,10 @@ type ReleaseInfo struct {
 // CheckForUpdates compares the current version with the latest release
 // and returns information about a newer version if available
 func CheckForUpdates(ctx context.Context, client HTTPDoer) (*UpdateInfo, error) {
+	if VERSION == "dev" {
+		return nil, fmt.Errorf("cannot check for updates: running a dev build")
+	}
+
 	// Create request with context
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, GithubAPI, nil)
 	if err != nil {
