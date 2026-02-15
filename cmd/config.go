@@ -62,6 +62,10 @@ func loadConfigFile(cmd *cobra.Command) error {
 	return nil
 }
 
+func flagExists(cmd *cobra.Command, name string) bool {
+	return cmd.Flags().Lookup(name) != nil
+}
+
 func applyConfig(cmd *cobra.Command, cfg *SetlistConfig) {
 	if !cmd.Flags().Changed(FlagSSOSession) && cfg.SSOSession != "" {
 		ssoSession = cfg.SSOSession
@@ -72,16 +76,16 @@ func applyConfig(cmd *cobra.Command, cfg *SetlistConfig) {
 	if !cmd.Flags().Changed(FlagProfile) && cfg.Profile != "" {
 		profile = cfg.Profile
 	}
-	if !cmd.Flags().Changed(FlagMapping) && cfg.Mapping != "" {
+	if flagExists(cmd, FlagMapping) && !cmd.Flags().Changed(FlagMapping) && cfg.Mapping != "" {
 		mapping = cfg.Mapping
 	}
-	if !cmd.Flags().Changed(FlagOutput) && cfg.Output != "" {
+	if flagExists(cmd, FlagOutput) && !cmd.Flags().Changed(FlagOutput) && cfg.Output != "" {
 		filename = cfg.Output
 	}
-	if !cmd.Flags().Changed(FlagStdout) && cfg.Stdout != nil {
+	if flagExists(cmd, FlagStdout) && !cmd.Flags().Changed(FlagStdout) && cfg.Stdout != nil {
 		stdout = *cfg.Stdout
 	}
-	if !cmd.Flags().Changed(FlagSSOFriendlyName) && cfg.SSOFriendlyName != "" {
+	if flagExists(cmd, FlagSSOFriendlyName) && !cmd.Flags().Changed(FlagSSOFriendlyName) && cfg.SSOFriendlyName != "" {
 		ssoFriendlyName = cfg.SSOFriendlyName
 	}
 	if !cmd.Flags().Changed(FlagVerbose) && cfg.Verbose != nil {
@@ -90,16 +94,16 @@ func applyConfig(cmd *cobra.Command, cfg *SetlistConfig) {
 	if !cmd.Flags().Changed(FlagLogFormat) && cfg.LogFormat != "" {
 		logFormat = cfg.LogFormat
 	}
-	if !cmd.Flags().Changed(FlagIncludeAccounts) && cfg.IncludeAccounts != "" {
+	if flagExists(cmd, FlagIncludeAccounts) && !cmd.Flags().Changed(FlagIncludeAccounts) && cfg.IncludeAccounts != "" {
 		includeAccounts = cfg.IncludeAccounts
 	}
-	if !cmd.Flags().Changed(FlagExcludeAccounts) && cfg.ExcludeAccounts != "" {
+	if flagExists(cmd, FlagExcludeAccounts) && !cmd.Flags().Changed(FlagExcludeAccounts) && cfg.ExcludeAccounts != "" {
 		excludeAccounts = cfg.ExcludeAccounts
 	}
-	if !cmd.Flags().Changed(FlagIncludePermissionSets) && cfg.IncludePermissionSets != "" {
+	if flagExists(cmd, FlagIncludePermissionSets) && !cmd.Flags().Changed(FlagIncludePermissionSets) && cfg.IncludePermissionSets != "" {
 		includePermissionSets = cfg.IncludePermissionSets
 	}
-	if !cmd.Flags().Changed(FlagExcludePermissionSets) && cfg.ExcludePermissionSets != "" {
+	if flagExists(cmd, FlagExcludePermissionSets) && !cmd.Flags().Changed(FlagExcludePermissionSets) && cfg.ExcludePermissionSets != "" {
 		excludePermissionSets = cfg.ExcludePermissionSets
 	}
 }
