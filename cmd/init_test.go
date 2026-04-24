@@ -249,4 +249,3 @@ func TestLogFormatFlagRegistered(t *testing.T) {
 		t.Errorf("Expected --%s default to be 'plain', got %q", FlagLogFormat, flag.DefValue)
 	}
 }
-
