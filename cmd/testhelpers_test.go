@@ -59,4 +59,3 @@ type mockOrganizationsClient struct {
 func (m *mockOrganizationsClient) ListAccounts(ctx context.Context, params *organizations.ListAccountsInput, optFns ...func(*organizations.Options)) (*organizations.ListAccountsOutput, error) {
 	return m.ListAccountsFunc(ctx, params, optFns...)
 }
-

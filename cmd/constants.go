@@ -31,4 +31,4 @@ const (
 
 const DEFAULT_FILENAME string = "aws.config"
 
-const DEFAULT_TIMEOUT time.Duration = 2 * time.Minute
+const DEFAULT_TIMEOUT time.Duration = 5 * time.Minute

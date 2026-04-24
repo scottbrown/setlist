@@ -25,19 +25,21 @@ func init() {
 }
 
 func loadAWSConfig(ctx context.Context) (aws.Config, error) {
-	if profile != "" {
-		slog.Info("Loading AWS config with profile", "profile", profile)
-		cfg, err := config.LoadDefaultConfig(ctx,
-			config.WithRegion(ssoRegion),
-			config.WithSharedConfigProfile(profile))
-		if err != nil {
-			return aws.Config{}, fmt.Errorf("failed to load AWS configuration with profile %s: %w", profile, err)
-		}
-		return cfg, nil
+	opts := []func(*config.LoadOptions) error{
+		config.WithRegion(ssoRegion),
+		config.WithRetryMaxAttempts(10),
 	}
 
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(ssoRegion))
+	if profile != "" {
+		slog.Info("Loading AWS config with profile", "profile", profile)
+		opts = append(opts, config.WithSharedConfigProfile(profile))
+	}
+
+	cfg, err := config.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
+		if profile != "" {
+			return aws.Config{}, fmt.Errorf("failed to load AWS configuration with profile %s: %w", profile, err)
+		}
 		return aws.Config{}, fmt.Errorf("failed to load AWS configuration: %w", err)
 	}
 	return cfg, nil

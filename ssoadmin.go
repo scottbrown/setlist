@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssoadmin"
 	"github.com/aws/aws-sdk-go-v2/service/ssoadmin/types"
 )
+
+const describePermissionSetConcurrency = 5
 
 // Define interface for the SSO Admin client to make testing easier
 type SSOAdminClient interface {
@@ -86,25 +89,7 @@ func PermissionSets(ctx context.Context, client SSOAdminClient, instanceArn stri
 		token = resp.NextToken
 	}
 
-	// Retrieve detailed information for each permission set.
-	for _, arn := range permissionSetArns {
-		params := &ssoadmin.DescribePermissionSetInput{
-			InstanceArn:      aws.String(instanceArn),
-			PermissionSetArn: aws.String(arn),
-		}
-		resp, err := client.DescribePermissionSet(ctx, params)
-		if err != nil {
-			return permissionSets, fmt.Errorf("failed to describe permission set %s: %w", arn, err)
-		}
-
-		if resp.PermissionSet == nil {
-			return permissionSets, fmt.Errorf("nil permission set returned for ARN %s", arn)
-		}
-
-		permissionSets = append(permissionSets, *resp.PermissionSet)
-	}
-
-	return permissionSets, nil
+	return describePermissionSetsConcurrently(ctx, client, instanceArn, permissionSetArns)
 }
 
 // AllPermissionSets retrieves all permission sets defined in an SSO instance.
@@ -138,21 +123,55 @@ func AllPermissionSets(ctx context.Context, client SSOAdminClient, instanceArn s
 		token = resp.NextToken
 	}
 
-	var permissionSets []types.PermissionSet
-	for _, arn := range arns {
-		resp, err := client.DescribePermissionSet(ctx, &ssoadmin.DescribePermissionSetInput{
-			InstanceArn:      aws.String(instanceArn),
-			PermissionSetArn: aws.String(arn),
-		})
-		if err != nil {
-			return permissionSets, fmt.Errorf("failed to describe permission set %s: %w", arn, err)
-		}
+	return describePermissionSetsConcurrently(ctx, client, instanceArn, arns)
+}
 
-		if resp.PermissionSet == nil {
-			return permissionSets, fmt.Errorf("nil permission set returned for ARN %s", arn)
-		}
+type describeResult struct {
+	index int
+	ps    types.PermissionSet
+	err   error
+}
 
-		permissionSets = append(permissionSets, *resp.PermissionSet)
+func describePermissionSetsConcurrently(ctx context.Context, client SSOAdminClient, instanceArn string, arns []string) ([]types.PermissionSet, error) {
+	if len(arns) == 0 {
+		return []types.PermissionSet{}, nil
+	}
+
+	results := make([]describeResult, len(arns))
+	sem := make(chan struct{}, describePermissionSetConcurrency)
+	var wg sync.WaitGroup
+
+	for i, arn := range arns {
+		wg.Add(1)
+		go func(idx int, permSetArn string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			resp, err := client.DescribePermissionSet(ctx, &ssoadmin.DescribePermissionSetInput{
+				InstanceArn:      aws.String(instanceArn),
+				PermissionSetArn: aws.String(permSetArn),
+			})
+			if err != nil {
+				results[idx] = describeResult{index: idx, err: fmt.Errorf("failed to describe permission set %s: %w", permSetArn, err)}
+				return
+			}
+			if resp.PermissionSet == nil {
+				results[idx] = describeResult{index: idx, err: fmt.Errorf("nil permission set returned for ARN %s", permSetArn)}
+				return
+			}
+			results[idx] = describeResult{index: idx, ps: *resp.PermissionSet}
+		}(i, arn)
+	}
+
+	wg.Wait()
+
+	permissionSets := make([]types.PermissionSet, 0, len(arns))
+	for _, r := range results {
+		if r.err != nil {
+			return permissionSets, r.err
+		}
+		permissionSets = append(permissionSets, r.ps)
 	}
 
 	return permissionSets, nil
