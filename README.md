@@ -390,7 +390,7 @@ Ensure you have write permissions to the output file location.
 
 ### Prerequisites
 
-- Go 1.24 or newer
+- Go 1.27.4 or newer
 - [Task](https://go-task.dev)
 
 ### Setup Development Environment
